@@ -160,16 +160,18 @@ function xtime(x) {
   
 
 function decrypt(cipherText, key) {
+    let plainText = '';
     const ctx = { RoundKey: new Uint8Array(176) };
     keyExpansion(ctx.RoundKey, key);
     for (let i = 0; i < 4; i++) {
-        plainText = InvCipher(cipherText.slice(i * 16, (i + 1) * 16), ctx.RoundKey); 
-        phex(plainText);
+        let plainText_i = InvCipher(cipherText.slice(i * 16, (i + 1) * 16), ctx.RoundKey); 
+        plainText += phex(plainText_i);
     }
+    return plainText;
 }
 
 function phex(data) {
-    console.log(Array.from(data).map(b => ('00' + b.toString(16)).slice(-2)).join(' '));
+    return Array.from(data).map(b => ('00' + b.toString(16)).slice(-2)).join(' ');
 }
 
 function RotWord(word) {
@@ -213,18 +215,39 @@ function keyExpansion(roundKey, key) {
     }
 }
 
-let cipher = '3ad77bb40d7a3660a89ecaf32466ef97f5d3d58503b9699de785895a96fdbaaf43b1cd7f598ece23881b00e3ed0306887b0c785e27e8ad3f8223207104725dd4';
-const buffer = new ArrayBuffer(64);
-let cipherText = new Uint8Array(buffer);
-let cnt = 0;
-for (let i = 0; i < cipher.length; i += 2) {
-    cipherText.set([parseInt(cipher.substring(i, i + 2), 16)], cnt);
-    cnt++;
+function uint8ArrayToAsciiString(byteArray) {
+    if (!(byteArray instanceof Uint8Array)) {
+      throw new TypeError('Input must be a Uint8Array');
+    }
+    return String.fromCharCode.apply(null, byteArray);
 }
-//console.log(phex(cipherText));
+
+function hexStringToUint8Array(hexString) {
+    // Split the string by spaces to get individual hex values
+    const hexValues = hexString.trim().split(/\s+/);
+    
+    // Convert each hex value to a number and store in a new Uint8Array
+    const uint8Array = new Uint8Array(hexValues.map(hex => parseInt(hex, 16)));
+    
+    return uint8Array;
+}
+
+function DoDecrypt(cipher, key) {
+    const buffer = new ArrayBuffer(64);
+    let cipherText = new Uint8Array(buffer);
+    let cnt = 0;
+    for (let i = 0; i < cipher.length; i += 2) {
+        cipherText.set([parseInt(cipher.substring(i, i + 2), 16)], cnt);
+        cnt++;
+    }
+    plainTextByteInString = decrypt(cipherText, key);
+    return uint8ArrayToAsciiString(hexStringToUint8Array(plainTextByteInString));
+}
+
+let cipher = '7570ea9ccc9bf8c0fc676346f282977bbfa5229a8c8205f20b688c8aa70d3d978ccb67b0acfa2bbff750262079119db68cd401d3a7235dbfb23c3a3908ad9af0';
 const key = new Uint8Array([
     0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
     0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
 ]);
-//console.log(key);
-decrypt(cipherText, key);
+
+console.log(DoDecrypt(cipher, key));

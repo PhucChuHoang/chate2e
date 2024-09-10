@@ -28,11 +28,11 @@ const sbox = [
     ])
 
     
-export function getSBoxValue(num) {
+function getSBoxValue(num) {
     return sbox[num];
 }
 
-export function keyExpansion(roundKey, key) {
+function keyExpansion(roundKey, key) {
     let tempa = new Array(4); // Used for the column/row operations
     let i, j, k;
   
@@ -80,7 +80,7 @@ export function keyExpansion(roundKey, key) {
   }
   
 // This function adds the round key to the state by applying an XOR operation.
-export function addRoundKey(round, state, roundKey) {
+function addRoundKey(round, state, roundKey) {
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       state[i][j] ^= roundKey[(round * Nb * 4) + (i * Nb) + j];
@@ -89,7 +89,7 @@ export function addRoundKey(round, state, roundKey) {
 }
 
 // The SubBytes function substitutes the values in the state matrix with values from an S-box.
-export function subBytes(state) {
+function subBytes(state) {
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       state[j][i] = getSBoxValue(state[j][i]);
@@ -100,7 +100,7 @@ export function subBytes(state) {
 
 // The ShiftRows function shifts the rows in the state to the left.
 // Each row is shifted with a different offset. Offset = Row number.
-export function shiftRows(state) {
+function shiftRows(state) {
   let temp;
 
   // Rotate first row 1 column to the left
@@ -128,13 +128,13 @@ export function shiftRows(state) {
 }
 
 // Function to perform finite field multiplication by 2 in GF(2^8)
-export function xtime(x) {
+function xtime(x) {
   return ((x << 1) ^ (((x >> 7) & 1) * 0x1b)) & 0xFF;
 }
 
 
 // The MixColumns function mixes the columns of the state matrix
-export function mixColumns(state) {
+function mixColumns(state) {
   let Tmp, Tm, t;
 
   for (let i = 0; i < 4; i++) {  
@@ -160,7 +160,7 @@ export function mixColumns(state) {
 }
 
 // Function to perform multiplication in GF(2^8) as defined by the AES standard
-export function multiply(x, y) {
+function multiply(x, y) {
   return (
     ((y & 1) * x) ^
     ((y >> 1 & 1) * xtime(x)) ^
@@ -183,7 +183,7 @@ function to2DArray(arr) {
   return matrix;
 }
 
-export function to1DArray(matrix) {
+function to1DArray(matrix) {
   let newArr = [];
   for(var i = 0; i < matrix.length; i++)
     {
@@ -196,7 +196,7 @@ export function to1DArray(matrix) {
 }
 
 // Cipher is the main function that encrypts the PlainText
-export function cipher(state, roundKey) {
+function cipher(state, roundKey) {
   state = to2DArray(state);
 
   let round = 0;
@@ -224,18 +224,18 @@ export function cipher(state, roundKey) {
 }
 
 // Function to initialize the AES context
-export function AES_init_ctx(ctx, key) {
+function AES_init_ctx(ctx, key) {
   keyExpansion(ctx.RoundKey, key);
 }
 
 // Helper function to print the hex representation
-export function phex(data) {
+function phex(data) {
   return Array.from(data)
     .map(b => ('00' + b.toString(16)).slice(-2))
     .join('');
 }
 
-export function uint8ArrayToAsciiString(byteArray) {
+function uint8ArrayToAsciiString(byteArray) {
   if (!(byteArray instanceof Uint8Array)) {
     throw new TypeError('Input must be a Uint8Array');
   }
@@ -243,7 +243,7 @@ export function uint8ArrayToAsciiString(byteArray) {
 }
 
 
-export function asciiStringToUint8Array(asciiString) {
+function asciiStringToUint8Array(asciiString) {
   while (asciiString.length % 64 !== 0) {
     asciiString += ' ';
   }
@@ -256,7 +256,7 @@ export function asciiStringToUint8Array(asciiString) {
 }
 
 
-export function testEncryptEcbVerbose(plaintext) {
+function DoEncrypt(plaintext) {
   // Example of more verbose verification
 
   // 128-bit key
@@ -279,38 +279,21 @@ export function testEncryptEcbVerbose(plaintext) {
 
   plainTextHex = asciiStringToUint8Array(plaintext);
 
-  // Print text to encrypt, key, and IV
-  console.log("ECB encrypt verbose:\n");
-
-  console.log("plain text:");
-  for (let i = 0; i < 4; ++i) {
-    phex(plainTextHex.slice(i * 16, (i + 1) * 16));
-  }
-  console.log("\n");
-
-  console.log("key:");
-  phex(key);
-  console.log("\n");
-
-  // Print the resulting cipher as 4 x 16 byte strings
-  console.log("ciphertext:");
-
   const ctx = { RoundKey: new Uint8Array(176) };
   AES_init_ctx(ctx, key);
 
   let ciphertextHex = '';
   for (let i = 0; i < 4; ++i) {
     cipher_text_i = cipher(plainTextHex.slice(i * 16, (i + 1) * 16), ctx.RoundKey);
-    //phex(cipher_text_i.slice(0,  16));
     ciphertextHex += phex(cipher_text_i);
   }
-  console.log("ciphertextHex: ", ciphertextHex);
+  return ciphertextHex;
 }
 
 
 
 s = "xin chao viet nam, xin chao vinh, xin chao phuc"
-testEncryptEcbVerbose(s);
+console.log(DoEncrypt(s));
 
 
 
