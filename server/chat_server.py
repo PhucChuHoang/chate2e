@@ -1,64 +1,61 @@
-# chat_server.py
-
 from flask import Flask, request
-import socketio
-from typing import List
-from pydantic import BaseModel
+from flask_socketio import SocketIO, emit
+import uuid
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Create a Socket.IO server
-sio = socketio.Server(cors_allowed_origins="http://localhost:3000", async_mode="eventlet")
-socket_app = socketio.WSGIApp(sio, app)
+# Dictionary to store connected users
+users = {}  # Format: {user_id: (user_name, session_id)}
 
-# Store connected users and messages in memory
-connected_users = {}
-messages = []
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
 
-class Message(BaseModel):
-    message: str
-    from_user: str
-    to_user: str
+@socketio.on('register_user')
+def handle_register_user(data):
+    user_name = data.get('name')
+    user_id = str(uuid.uuid4())  # Generate a unique user ID
+    users[user_id] = (user_name, request.sid)  # Store user ID, name, and session ID
+    print(f'User {user_name} registered with ID {user_id} and session ID {request.sid}')
+    
+    # Send the updated list of users with their IDs
+    emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
-@app.route("/")
-def index():
-    return {"message": "Chat server is running"}
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    print(f'Received chat message: {data}')
+    to_user = data.get('to_user')
+    from_user = data.get('from_user')
+    message = data.get('message')
+    print('List of users:', users)
+    
+    # Find the session ID for the recipient
+    to_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == to_user:
+            to_user_sid = sid
+            break
+    
+    if to_user_sid:
+        print(f'Sending message to user with ID {to_user_sid}')
+        emit('receive_message', {
+            'message': message,
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=to_user_sid)
 
-@app.route("/messages")
-def get_messages():
-    return {"messages": messages}
+@socketio.on('disconnect')
+def handle_disconnect():
+    disconnected_user_id = None
+    for user_id, (user_name, sid) in users.items():
+        if sid == request.sid:
+            disconnected_user_id = user_id
+            break
+    if disconnected_user_id:
+        del users[disconnected_user_id]
+        print(f'User with ID {disconnected_user_id} disconnected')
+        emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
-@sio.event
-def connect(sid, environ):
-    print(f"Client {sid} connected with environ: {environ}")
-    sio.emit('users', list(connected_users.values()), room=sid)
-
-@sio.event
-def disconnect(sid):
-    print(f"Client {sid} disconnected")
-    user = connected_users.pop(sid, None)
-    if user:
-        sio.emit('users', list(connected_users.values()))
-
-@sio.on('register_user')
-def handle_register_user(sid, data):
-    username = data['name']
-    connected_users[sid] = {'id': sid, 'name': username}
-    sio.emit('users', list(connected_users.values()))
-
-@sio.on('chat_message')
-def handle_chat_message(sid, data):
-    message = Message(**data)
-    print(f"Received message from {message.from_user} to {message.to_user}: {message.message}")
-    messages.append({
-        'message': message.message,
-        'from_user': message.from_user,
-        'to_user': message.to_user
-    })
-    recipient_sid = next((key for key, value in connected_users.items() if value['name'] == message.to_user), None)
-    if recipient_sid:
-        sio.emit('receive_message', data, room=recipient_sid)
-
-if __name__ == "__main__":
-    import eventlet
-    eventlet.wsgi.server(eventlet.listen(('0.0.0.0', 8000)), socket_app)
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=8000)

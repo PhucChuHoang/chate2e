@@ -1,25 +1,14 @@
-// components/ChatWindow.tsx
-
-import React, { useState } from "react";
-
-interface User {
-  id: string;
-  name: string;
-}
-
-interface Message {
-  message: string;
-  from_user: string;  // Should match with how you send/receive messages
-  to_user: string;    // This might not be used in the display, but is necessary for storage
-}
+import React, { useState, useEffect } from "react";
+import { Message, User } from "../types/type";
 
 interface ChatWindowProps {
   selectedUser: User | null;
   messages: Record<string, Message[]>;  // Record mapping user IDs to arrays of messages
   onSendMessage: (message: string) => void;
+  currentUserId: string;  // Pass current user ID as a prop
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ selectedUser, messages, onSendMessage }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ selectedUser, messages, onSendMessage, currentUserId }) => {
   const [input, setInput] = useState<string>("");
 
   const handleSendMessage = () => {
@@ -29,17 +18,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedUser, messages, onSendM
     }
   };
 
+  // Retrieve messages for the selected user
+  const userMessages = selectedUser ? messages[selectedUser.id] || [] : [];
+
   return (
     <div style={{ padding: "20px", width: "100%" }}>
       {selectedUser ? (
         <>
-          <h3>Chat with {selectedUser.name}</h3>
+          <h3>Chat with {selectedUser.name}, userId: {selectedUser.id}</h3>
           <div style={{ height: "300px", overflowY: "scroll", border: "1px solid #ccc", marginBottom: "20px" }}>
-            {messages[selectedUser.id]?.map((msg, idx) => (
-              <div key={idx} style={{ margin: "10px 0" }}>
-                <b>{msg.from_user === "YourName" ? "Me" : selectedUser.name}</b>: {msg.message}
-              </div>
-            ))}
+            {userMessages.length > 0 ? (
+              userMessages.map((msg, idx) => (
+                <div key={idx} style={{ margin: "10px 0" }}>
+                  <b>{msg.from_user === currentUserId ? "Me" : selectedUser.name}</b>: {msg.message}
+                </div>
+              ))
+            ) : (
+              <p>No messages</p>
+            )}
           </div>
           <input
             type="text"
