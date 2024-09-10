@@ -2,8 +2,6 @@ const Nk =  4        // The number of 32 bit words in a key.
 const Nr =  10       // The number of rounds in AES Cipher.
 const Nb = 4          // The number of columns comprising a state in AES. This is a constant in AES. Value=4
 
-const key = [0x2b,  0x7e,  0x15,  0x16,  0x28,  0xae,  0xd2,  0xa6,  0xab,  0xf7,  0x15,  0x88,  0x09,  0xcf,  0x4f,  0x3c] 
-
 const sbox = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -257,14 +255,6 @@ function asciiStringToUint8Array(asciiString) {
 
 
 function DoEncrypt(plaintext) {
-  // Example of more verbose verification
-
-  // 128-bit key
-  const key = new Uint8Array([
-    0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-    0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
-  ]);
-
   // // 512-bit text
   // const plainText = new Uint8Array([
   //   0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
@@ -290,10 +280,38 @@ function DoEncrypt(plaintext) {
   return ciphertextHex;
 }
 
+function getEncryptData(plainText, key) {
+  // Array to store encrypted strings
+  const encryptedArray = [];
+
+  // Loop through the plainText in 64-character chunks
+  for (let i = 0; i < plainText.length; i += 64) {
+      // Extract a 64-character substring from plainText
+      const chunk = plainText.substring(i, i + 64);
+      
+      // Encrypt the chunk using DoEncrypt and store in the array
+      const encryptedChunk = DoEncrypt(chunk, key);
+      encryptedArray.push(encryptedChunk);
+  }
+
+  return encryptedArray;
+}
+
+  // 128-bit key
+const key = new Uint8Array([
+    0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+    0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
+  ]);
+
+  
+s = "In the realm of human knowledge, one of the most fascinating aspects of our existence is the ability to learn, adapt, and innovate. This perpetual journey of discovery and understanding has been the cornerstone of human civilization, driving us from the rudimentary tools of early man to the complex technologies that define the modern world. The evolution of our capacity to think critically, to question the unknown, and to solve complex problems is a testament to our enduring spirit and determination.We stand on the shoulders of giants, benefiting from the accumulated wisdom of countless generations who have explored the mysteries of nature, deciphered the laws of physics, and uncovered the secrets of the universe. Yet, there is still so much to learn, so many challenges to overcome, and so many frontiers to explore. From the depths of the oceans to the farthest reaches of space, humanity's quest for knowledge is far from complete.In this ever-changing world, education remains a vital force, shaping the minds of the next generation, empowering individuals, and fostering a culture of innovation and creativity. It is through education that we gain the tools to understand our world, to express our ideas, and to make meaningful contributions to society. As we move forward into an uncertain future, the importance of learning, curiosity, and a relentless pursuit of truth cannot be overstated. Our journey continues, guided by the light of knowledge and the promise of discovery."
+result = getEncryptData(s, key);
+console.log(result);
 
 
-s = "xin chao viet nam, xin chao vinh, xin chao phuc"
-console.log(DoEncrypt(s));
+
+
+
 
 
 
