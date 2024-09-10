@@ -1,49 +1,40 @@
-'use client'
+'use client';
 
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Button, message } from "antd";
+import { Modal, Input, message as antdMessage } from "antd";
+import { useUser } from "./context/UserContext";
 import useSocket from "./hooks/useSocket";
 import UserList from "./componets/UserList";
 import ChatWindow from "./componets/ChatWindow";
-import { useUser } from "./context/UserContext";
-
-interface User {
-  id: string;
-  name: string;
-}
+import { User } from "./types/type";
 
 export default function Home() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false); // Initially hidden
-  const {userName, setUserName} = useUser();
-  const [isDone, setIsDone] = useState<boolean>(false);
+  const { userName, setUserName, setFinished, userId } = useUser();
+  const { users, messages, sendMessage } = useSocket();
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(true);
+  const [isClient, setIsClient] = useState(false); // New state to check client
 
-  // Initialize socket connection only when a userName is set
-  const { users, messages, sendMessage } = useSocket(userName, isDone);
-
+  // useEffect to ensure this runs only on the client
   useEffect(() => {
-    // Only run the modal logic on the client side
-    if (typeof window !== "undefined") {
-      setIsModalVisible(true);
-    }
+    setIsClient(true); // Mark as client-side rendering
   }, []);
 
   const handleOk = () => {
     if (userName.trim()) {
-      setIsDone(true);
       setIsModalVisible(false);
+      setFinished(true);
     } else {
-      message.error("Please enter a valid name.");
+      antdMessage.error("Please enter a valid name.");
     }
-  };
-
-  const handleCancel = () => {
-    setIsModalVisible(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserName(e.target.value);
   };
+
+  // Return null while waiting for client-side render to avoid hydration errors
+  if (!isClient) return null;
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
@@ -51,14 +42,15 @@ export default function Home() {
       <ChatWindow
         selectedUser={selectedUser}
         messages={messages}
-        onSendMessage={(message: string) => selectedUser && sendMessage(message, selectedUser.id)}
+        onSendMessage={(message: string) =>
+          selectedUser && sendMessage(message, selectedUser.id)
+        }
+        currentUserId={userId}
       />
-      {/* Render Modal only on client side */}
       <Modal
         title="Enter your name"
         open={isModalVisible}
         onOk={handleOk}
-        onCancel={handleCancel}
         okText="Connect"
         cancelText="Cancel"
       >
