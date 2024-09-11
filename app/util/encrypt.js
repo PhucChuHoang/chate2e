@@ -267,20 +267,20 @@ function DoEncrypt(plaintext) {
   //   0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10
   // ]);
 
-  plainTextHex = asciiStringToUint8Array(plaintext);
+  let plainTextHex = asciiStringToUint8Array(plaintext);
 
   const ctx = { RoundKey: new Uint8Array(176) };
   AES_init_ctx(ctx, key);
 
   let ciphertextHex = '';
   for (let i = 0; i < 4; ++i) {
-    cipher_text_i = cipher(plainTextHex.slice(i * 16, (i + 1) * 16), ctx.RoundKey);
+    let cipher_text_i = cipher(plainTextHex.slice(i * 16, (i + 1) * 16), ctx.RoundKey);
     ciphertextHex += phex(cipher_text_i);
   }
   return ciphertextHex;
 }
 
-function getEncryptData(plainText, key) {
+export function getEncryptData(plainText, key) {
   // Array to store encrypted strings
   const encryptedArray = [];
 
