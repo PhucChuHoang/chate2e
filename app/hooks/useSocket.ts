@@ -42,8 +42,7 @@ export const useSocket = () => {
       socketInstance.on("prime_number_message", (message) => {
         //Log the message to the console
         let number = makeNewPrime(BigInt(message.prime_number));
-        setUserPrimeNumber(BigInt(number));
-        setServerPrimeNumber(BigInt(message.prime_number));
+        
         //console.log(makeNewKey(number));
 
         let encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
@@ -53,12 +52,20 @@ export const useSocket = () => {
           from_user: message.to_user,
           to_user: message.from_user,
         };
+
+        //Set state before calling socket
+        setUserPrimeNumber(BigInt(number));
+        setServerPrimeNumber(BigInt(message.prime_number));
+
         socketInstance.emit("encrypt_key_message", newMessage);
       });
 
       socketInstance.on("receive_encrypt_key", (message) => {
         console.log("Receive: " + message.message);
         console.log("From: " + message.from_user);
+        let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumber), BigInt(serverPrimeNumber));
+        console.log("Secret Key: " + secretKey);
+        setSecretKey(secretKey);
       });
 
       setSocket(socketInstance);
