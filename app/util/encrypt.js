@@ -304,15 +304,10 @@ const key = new Uint8Array([
   ]);
 
   
-s = "In the realm of human knowledge, one of the most fascinating aspects of our existence is the ability to learn, adapt, and innovate. This perpetual journey of discovery and understanding has been the cornerstone of human civilization, driving us from the rudimentary tools of early man to the complex technologies that define the modern world. The evolution of our capacity to think critically, to question the unknown, and to solve complex problems is a testament to our enduring spirit and determination.We stand on the shoulders of giants, benefiting from the accumulated wisdom of countless generations who have explored the mysteries of nature, deciphered the laws of physics, and uncovered the secrets of the universe. Yet, there is still so much to learn, so many challenges to overcome, and so many frontiers to explore. From the depths of the oceans to the farthest reaches of space, humanity's quest for knowledge is far from complete.In this ever-changing world, education remains a vital force, shaping the minds of the next generation, empowering individuals, and fostering a culture of innovation and creativity. It is through education that we gain the tools to understand our world, to express our ideas, and to make meaningful contributions to society. As we move forward into an uncertain future, the importance of learning, curiosity, and a relentless pursuit of truth cannot be overstated. Our journey continues, guided by the light of knowledge and the promise of discovery."
-result = getEncryptData(s, key);
-console.log(result);
+/** s = "In the realm of human knowledge, one of the most fascinating aspects of our existence is the ability to learn, adapt, and innovate. This perpetual journey of discovery and understanding has been the cornerstone of human civilization, driving us from the rudimentary tools of early man to the complex technologies that define the modern world. The evolution of our capacity to think critically, to question the unknown, and to solve complex problems is a testament to our enduring spirit and determination.We stand on the shoulders of giants, benefiting from the accumulated wisdom of countless generations who have explored the mysteries of nature, deciphered the laws of physics, and uncovered the secrets of the universe. Yet, there is still so much to learn, so many challenges to overcome, and so many frontiers to explore. From the depths of the oceans to the farthest reaches of space, humanity's quest for knowledge is far from complete.In this ever-changing world, education remains a vital force, shaping the minds of the next generation, empowering individuals, and fostering a culture of innovation and creativity. It is through education that we gain the tools to understand our world, to express our ideas, and to make meaningful contributions to society. As we move forward into an uncertain future, the importance of learning, curiosity, and a relentless pursuit of truth cannot be overstated. Our journey continues, guided by the light of knowledge and the promise of discovery." **/
 
-
-
-
-
-
+// result = getEncryptData(s, key);
+// console.log(result);
 
 
 // -------------------------------------- test convert from uint8Array to string 
