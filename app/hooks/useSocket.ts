@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
 import { User } from "../types/type";
@@ -11,9 +11,10 @@ export const useSocket = () => {
   const { userName, addMessage, finished, userId, setUserId, messages } = useUser(); // Access userName and addMessage from context
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [userPrimeNumber, setUserPrimeNumber] = useState<bigint | boolean | number | string>(0);
-  const [serverPrimeNumber, setServerPrimeNumber] = useState<bigint | boolean | number | string>(0);
-  const [secretKey, setSecretKey] = useState<bigint | boolean | number | string>(0);
+
+  const userPrimeNumberRef = useRef<bigint>(BigInt(0));
+  const serverPrimeNumberRef = useRef<bigint>(BigInt(0));
+  const secretKeyRef = useRef<bigint>(BigInt(0));
 
   useEffect(() => {
     if (userName && finished) {
@@ -42,8 +43,6 @@ export const useSocket = () => {
       socketInstance.on("prime_number_message", (message) => {
         //Log the message to the console
         let number = makeNewPrime(BigInt(message.prime_number));
-        
-        //console.log(makeNewKey(number));
 
         let encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
 
@@ -53,19 +52,19 @@ export const useSocket = () => {
           to_user: message.from_user,
         };
 
-        //Set state before calling socket
-        setUserPrimeNumber(BigInt(number));
-        setServerPrimeNumber(BigInt(message.prime_number));
+        userPrimeNumberRef.current = BigInt(number);
+        serverPrimeNumberRef.current = BigInt(message.prime_number);
 
+        console.log("Send: " + newMessage.message);
         socketInstance.emit("encrypt_key_message", newMessage);
       });
 
       socketInstance.on("receive_encrypt_key", (message) => {
         console.log("Receive: " + message.message);
         console.log("From: " + message.from_user);
-        let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumber), BigInt(serverPrimeNumber));
+        let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
         console.log("Secret Key: " + secretKey);
-        setSecretKey(secretKey);
+        secretKeyRef.current = BigInt(secretKey);
       });
 
       setSocket(socketInstance);
