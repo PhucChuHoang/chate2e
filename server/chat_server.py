@@ -74,13 +74,6 @@ def handle_encrypt_key_message(data):
     from_user = data.get('from_user')
     encrypted_key = data.get('message')
 
-    db = get_db_connection()
-
-    # Store the encryption key in the database
-    db.execute('INSERT OR REPLACE INTO MessageKey (SenderID, ReceiverID, encryptedSecretKey) VALUES (?, ?, ?)',
-               (from_user, to_user, encrypted_key))
-    db.commit()
-    
     # Fetch the session ID for the recipient
     to_user_sid = None
     for uid, (name, sid) in users.items():
@@ -144,6 +137,11 @@ def handle_chat_message(data):
             'from_user': from_user,
             'to_user': to_user
         }, room=to_user_sid)
+        db = get_db_connection()
+        db.execute('INSERT INTO Message (messageID, SenderID, ReceiverID, encryptedMessage) VALUES (?, ?, ?, ?)',
+                   (str(uuid.uuid4()), from_user, to_user, message))
+        db.commit()
+        print(f'Message from {from_user} to {to_user} sent successfully!')
 
 @socketio.on('disconnect')
 def handle_disconnect():
