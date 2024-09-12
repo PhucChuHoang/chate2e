@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
+from Crypto.Util.number import getPrime
 import uuid
 
 app = Flask(__name__)
@@ -7,6 +8,12 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Dictionary to store connected users
 users = {}  # Format: {user_id: (user_name, session_id)}
+
+# Save people that have chat with each other 
+chats = {} # Format: {user_id: {user_id: true}}
+
+def prime_number():
+    return getPrime(128) 
 
 @socketio.on('connect')
 def handle_connect():
@@ -16,21 +23,19 @@ def handle_connect():
 def handle_register_user(data):
     user_name = data.get('name')
     user_id = str(uuid.uuid4())  # Generate a unique user ID
+    chats[user_id] = {}
     users[user_id] = (user_name, request.sid)  # Store user ID, name, and session ID
     print(f'User {user_name} registered with ID {user_id} and session ID {request.sid}')
     
     # Send the updated list of users with their IDs
     emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
-@socketio.on('chat_message')
-def handle_chat_message(data):
-    print(f'Received chat message: {data}')
+@socketio.on('encrypt_key_message')
+def handle_encrypt_key_message(data):
+    print(f'Received encrypt_key_message: {data}')
     to_user = data.get('to_user')
     from_user = data.get('from_user')
-    message = data.get('message')
-    print('List of users:', users)
-    
-    # Find the session ID for the recipient
+
     to_user_sid = None
     for uid, (name, sid) in users.items():
         if uid == to_user:
@@ -38,7 +43,55 @@ def handle_chat_message(data):
             break
     
     if to_user_sid:
-        print(f'Sending message to user with ID {to_user_sid}')
+        emit('receive_encrypt_key', {
+            'message': data.get('message'),
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=to_user_sid)
+    
+
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    #print(f'Received chat message: {data}')
+    to_user = data.get('to_user')
+    from_user = data.get('from_user')
+    message = data.get('message')
+    #print('List of users:', users)
+    
+    # Find the session ID for the recipient
+    to_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == to_user:
+            to_user_sid = sid
+            break
+
+    # Find the session ID for the sender
+    from_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == from_user:
+            from_user_sid = sid
+    
+    if to_user_sid:
+        # Check if the users have chat with each other -> Send prime
+        if from_user in chats:
+            p = prime_number()
+            if chats[from_user].get(to_user) != True:
+                chats[from_user][to_user] = True
+                chats[to_user][from_user] = True
+                emit('prime_number_message', {
+                    'prime_number': str(p),
+                    'generator': 2,
+                    'to_user': from_user,
+                    'from_user': to_user,  
+                }, room = from_user_sid)
+                emit('prime_number_message', {
+                    'prime_number': str(p),
+                    'generator': 2,
+                    'to_user': to_user,
+                    'from_user': from_user,
+                }, room = to_user_sid)
+        
+        #print(f'Sending message to user with ID {to_user_sid}')
         emit('receive_message', {
             'message': message,
             'from_user': from_user,

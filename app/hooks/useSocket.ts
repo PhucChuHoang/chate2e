@@ -1,15 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
 import { User } from "../types/type";
+//Use function from util
+import { makeNewKey, makeNewPrime, exponetional } from "../util/util_math";
+import { getEncryptData } from "../util/encrypt";
 
 const SERVER_URL = "http://localhost:8000";
-
 
 export const useSocket = () => {
   const { userName, addMessage, finished, userId, setUserId, messages } = useUser(); // Access userName and addMessage from context
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+
+  const userPrimeNumberRef = useRef<bigint>(BigInt(0));
+  const serverPrimeNumberRef = useRef<bigint>(BigInt(0));
+  const secretKeyRef = useRef<bigint>(BigInt(0));
 
   useEffect(() => {
     if (userName && finished) {
@@ -35,6 +41,33 @@ export const useSocket = () => {
         addMessage(message);
       });
 
+      socketInstance.on("prime_number_message", (message) => {
+        //Log the message to the console
+        let number = makeNewPrime(BigInt(message.prime_number));
+
+        let encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
+
+        const newMessage = {
+          message: encrypt.toString(),
+          from_user: message.to_user,
+          to_user: message.from_user,
+        };
+
+        userPrimeNumberRef.current = BigInt(number);
+        serverPrimeNumberRef.current = BigInt(message.prime_number);
+
+        console.log("Send: " + newMessage.message);
+        socketInstance.emit("encrypt_key_message", newMessage);
+      });
+
+      socketInstance.on("receive_encrypt_key", (message) => {
+        //console.log("Receive: " + message.message);
+        //console.log("From: " + message.from_user);
+        let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
+        //console.log("Secret Key: " + secretKey);
+        secretKeyRef.current = BigInt(secretKey);
+      });
+
       setSocket(socketInstance);
 
       return () => {
@@ -44,14 +77,24 @@ export const useSocket = () => {
   }, [userName, finished]);
 
   const sendMessage = (message: string, toUserId: string) => {
+    let encryptMessage = "";
+    if (secretKeyRef.current !== BigInt(0)) {
+      let keyArray = makeNewKey(secretKeyRef.current);
+      encryptMessage = getEncryptData(message, keyArray).join("");
+    }
     if (socket) {
+      const newMessageLocal = {
+        message: message,
+        from_user: userId,
+        to_user: toUserId,
+      };
       const newMessage = {
-        message,
+        message: encryptMessage? encryptMessage : message,
         from_user: userId,
         to_user: toUserId,
       };
       socket.emit("chat_message", newMessage);
-      addMessage(newMessage); // Add the sent message to the global state
+      addMessage(newMessageLocal); // Add the sent message to the global state
     }
   };
 

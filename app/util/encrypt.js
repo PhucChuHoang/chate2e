@@ -2,8 +2,6 @@ const Nk =  4        // The number of 32 bit words in a key.
 const Nr =  10       // The number of rounds in AES Cipher.
 const Nb = 4          // The number of columns comprising a state in AES. This is a constant in AES. Value=4
 
-const key = [0x2b,  0x7e,  0x15,  0x16,  0x28,  0xae,  0xd2,  0xa6,  0xab,  0xf7,  0x15,  0x88,  0x09,  0xcf,  0x4f,  0x3c] 
-
 const sbox = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -28,11 +26,11 @@ const sbox = [
     ])
 
     
-export function getSBoxValue(num) {
+function getSBoxValue(num) {
     return sbox[num];
 }
 
-export function keyExpansion(roundKey, key) {
+function keyExpansion(roundKey, key) {
     let tempa = new Array(4); // Used for the column/row operations
     let i, j, k;
   
@@ -80,7 +78,7 @@ export function keyExpansion(roundKey, key) {
   }
   
 // This function adds the round key to the state by applying an XOR operation.
-export function addRoundKey(round, state, roundKey) {
+function addRoundKey(round, state, roundKey) {
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       state[i][j] ^= roundKey[(round * Nb * 4) + (i * Nb) + j];
@@ -89,7 +87,7 @@ export function addRoundKey(round, state, roundKey) {
 }
 
 // The SubBytes function substitutes the values in the state matrix with values from an S-box.
-export function subBytes(state) {
+function subBytes(state) {
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       state[j][i] = getSBoxValue(state[j][i]);
@@ -100,7 +98,7 @@ export function subBytes(state) {
 
 // The ShiftRows function shifts the rows in the state to the left.
 // Each row is shifted with a different offset. Offset = Row number.
-export function shiftRows(state) {
+function shiftRows(state) {
   let temp;
 
   // Rotate first row 1 column to the left
@@ -128,13 +126,13 @@ export function shiftRows(state) {
 }
 
 // Function to perform finite field multiplication by 2 in GF(2^8)
-export function xtime(x) {
+function xtime(x) {
   return ((x << 1) ^ (((x >> 7) & 1) * 0x1b)) & 0xFF;
 }
 
 
 // The MixColumns function mixes the columns of the state matrix
-export function mixColumns(state) {
+function mixColumns(state) {
   let Tmp, Tm, t;
 
   for (let i = 0; i < 4; i++) {  
@@ -160,7 +158,7 @@ export function mixColumns(state) {
 }
 
 // Function to perform multiplication in GF(2^8) as defined by the AES standard
-export function multiply(x, y) {
+function multiply(x, y) {
   return (
     ((y & 1) * x) ^
     ((y >> 1 & 1) * xtime(x)) ^
@@ -183,7 +181,7 @@ function to2DArray(arr) {
   return matrix;
 }
 
-export function to1DArray(matrix) {
+function to1DArray(matrix) {
   let newArr = [];
   for(var i = 0; i < matrix.length; i++)
     {
@@ -196,7 +194,7 @@ export function to1DArray(matrix) {
 }
 
 // Cipher is the main function that encrypts the PlainText
-export function cipher(state, roundKey) {
+function cipher(state, roundKey) {
   state = to2DArray(state);
 
   let round = 0;
@@ -224,18 +222,18 @@ export function cipher(state, roundKey) {
 }
 
 // Function to initialize the AES context
-export function AES_init_ctx(ctx, key) {
+function AES_init_ctx(ctx, key) {
   keyExpansion(ctx.RoundKey, key);
 }
 
 // Helper function to print the hex representation
-export function phex(data) {
+function phex(data) {
   return Array.from(data)
     .map(b => ('00' + b.toString(16)).slice(-2))
     .join('');
 }
 
-export function uint8ArrayToAsciiString(byteArray) {
+function uint8ArrayToAsciiString(byteArray) {
   if (!(byteArray instanceof Uint8Array)) {
     throw new TypeError('Input must be a Uint8Array');
   }
@@ -243,7 +241,7 @@ export function uint8ArrayToAsciiString(byteArray) {
 }
 
 
-export function asciiStringToUint8Array(asciiString) {
+function asciiStringToUint8Array(asciiString) {
   while (asciiString.length % 64 !== 0) {
     asciiString += ' ';
   }
@@ -256,15 +254,7 @@ export function asciiStringToUint8Array(asciiString) {
 }
 
 
-export function testEncryptEcbVerbose(plaintext) {
-  // Example of more verbose verification
-
-  // 128-bit key
-  const key = new Uint8Array([
-    0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-    0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
-  ]);
-
+function DoEncrypt(plaintext) {
   // // 512-bit text
   // const plainText = new Uint8Array([
   //   0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
@@ -277,41 +267,47 @@ export function testEncryptEcbVerbose(plaintext) {
   //   0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10
   // ]);
 
-  plainTextHex = asciiStringToUint8Array(plaintext);
-
-  // Print text to encrypt, key, and IV
-  console.log("ECB encrypt verbose:\n");
-
-  console.log("plain text:");
-  for (let i = 0; i < 4; ++i) {
-    phex(plainTextHex.slice(i * 16, (i + 1) * 16));
-  }
-  console.log("\n");
-
-  console.log("key:");
-  phex(key);
-  console.log("\n");
-
-  // Print the resulting cipher as 4 x 16 byte strings
-  console.log("ciphertext:");
+  let plainTextHex = asciiStringToUint8Array(plaintext);
 
   const ctx = { RoundKey: new Uint8Array(176) };
   AES_init_ctx(ctx, key);
 
   let ciphertextHex = '';
   for (let i = 0; i < 4; ++i) {
-    cipher_text_i = cipher(plainTextHex.slice(i * 16, (i + 1) * 16), ctx.RoundKey);
-    //phex(cipher_text_i.slice(0,  16));
+    let cipher_text_i = cipher(plainTextHex.slice(i * 16, (i + 1) * 16), ctx.RoundKey);
     ciphertextHex += phex(cipher_text_i);
   }
-  console.log("ciphertextHex: ", ciphertextHex);
+  return ciphertextHex;
 }
 
+export function getEncryptData(plainText, key) {
+  // Array to store encrypted strings
+  const encryptedArray = [];
 
+  // Loop through the plainText in 64-character chunks
+  for (let i = 0; i < plainText.length; i += 64) {
+      // Extract a 64-character substring from plainText
+      const chunk = plainText.substring(i, i + 64);
+      
+      // Encrypt the chunk using DoEncrypt and store in the array
+      const encryptedChunk = DoEncrypt(chunk, key);
+      encryptedArray.push(encryptedChunk);
+  }
 
-s = "xin chao viet nam, xin chao vinh, xin chao phuc"
-testEncryptEcbVerbose(s);
+  return encryptedArray;
+}
 
+  // 128-bit key
+const key = new Uint8Array([
+    0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
+    0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
+  ]);
+
+  
+/** s = "In the realm of human knowledge, one of the most fascinating aspects of our existence is the ability to learn, adapt, and innovate. This perpetual journey of discovery and understanding has been the cornerstone of human civilization, driving us from the rudimentary tools of early man to the complex technologies that define the modern world. The evolution of our capacity to think critically, to question the unknown, and to solve complex problems is a testament to our enduring spirit and determination.We stand on the shoulders of giants, benefiting from the accumulated wisdom of countless generations who have explored the mysteries of nature, deciphered the laws of physics, and uncovered the secrets of the universe. Yet, there is still so much to learn, so many challenges to overcome, and so many frontiers to explore. From the depths of the oceans to the farthest reaches of space, humanity's quest for knowledge is far from complete.In this ever-changing world, education remains a vital force, shaping the minds of the next generation, empowering individuals, and fostering a culture of innovation and creativity. It is through education that we gain the tools to understand our world, to express our ideas, and to make meaningful contributions to society. As we move forward into an uncertain future, the importance of learning, curiosity, and a relentless pursuit of truth cannot be overstated. Our journey continues, guided by the light of knowledge and the promise of discovery." **/
+
+// result = getEncryptData(s, key);
+// console.log(result);
 
 
 // -------------------------------------- test convert from uint8Array to string 
