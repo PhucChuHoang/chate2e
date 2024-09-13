@@ -5,6 +5,10 @@ import { Message } from "../types/type";
 interface UserContextType {
   userName: string;
   setUserName: (name: string) => void;
+  userEmail: string;
+  setUserEmail: (email: string) => void;
+  userPassword: string;
+  setUserPassword: (password: string) => void
   userId: string;
   setUserId: (id: string) => void;
   finished: boolean;
@@ -20,6 +24,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [finished, setFinished] = useState<boolean>(false);
   const [userId, setUserId] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userPassword, setUserPassword] = useState<string>("");
 
   return (
     <UserContext.Provider
@@ -41,6 +47,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setFinished,
         userId,
         setUserId,
+        userEmail,
+        setUserEmail,
+        userPassword,
+        setUserPassword,
       }}
     >
       {children}
