@@ -2,9 +2,20 @@ from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from Crypto.Util.number import getPrime
 import uuid
+import sqlite3
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+db_connection = None
+# function to get the database connection (singleton pattern)
+def get_db_connection():
+    global db_connection
+    if db_connection is None:
+        db_connection = sqlite3.connect('database.db', check_same_thread=False)
+        db_connection.row_factory = sqlite3.Row
+    return db_connection
+
 
 # Dictionary to store connected users
 users = {}  # Format: {user_id: (user_name, session_id)}
@@ -22,33 +33,62 @@ def handle_connect():
 @socketio.on('register_user')
 def handle_register_user(data):
     user_name = data.get('name')
-    user_id = str(uuid.uuid4())  # Generate a unique user ID
-    chats[user_id] = {}
-    users[user_id] = (user_name, request.sid)  # Store user ID, name, and session ID
-    print(f'User {user_name} registered with ID {user_id} and session ID {request.sid}')
+    session_id = request.sid
+
+    db = get_db_connection()
     
+    # Check if the user already exists
+    existing_user = db.execute('SELECT ID FROM User WHERE username = ?', (user_name,)).fetchone()
+    
+    if existing_user:
+        user_id = existing_user['ID']
+        print(f'User {user_name} already exists with ID {user_id}')
+    else:
+        user_id = str(uuid.uuid4())  # Generate a unique user ID
+        db.execute('INSERT INTO User (ID, name, username, hashedPassword) VALUES (?, ?, ?, ?)',
+                   (user_id, user_name, user_name, '')) 
+        db.commit()
+        print(f'User {user_name} registered with ID {user_id} and session ID {session_id}')
+    
+    # Update the users dictionary
+    users[user_id] = (user_name, session_id)
+    # Initialize chat records for the user
+    chats[user_id] = {}
+    
+    # Fetch all users
+    dbUsers = db.execute('SELECT ID, name FROM User').fetchall()
+    
+    # Send the updated list of users
+    # TESTDB: broadcast for ALL USER
+    emit('users', [{'id': user['ID'], 'name': user['name']} for user in dbUsers], broadcast=True)
+    
+
+    # TODO: uncomment to broadcast with all ONLINE users, not ALL users
     # Send the updated list of users with their IDs
-    emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
+    #emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
 @socketio.on('encrypt_key_message')
 def handle_encrypt_key_message(data):
     print(f'Received encrypt_key_message: {data}')
     to_user = data.get('to_user')
     from_user = data.get('from_user')
+    encrypted_key = data.get('message')
 
+    # Fetch the session ID for the recipient
     to_user_sid = None
     for uid, (name, sid) in users.items():
         if uid == to_user:
             to_user_sid = sid
             break
-    
+
     if to_user_sid:
         emit('receive_encrypt_key', {
-            'message': data.get('message'),
+            'message': encrypted_key,
             'from_user': from_user,
             'to_user': to_user
         }, room=to_user_sid)
-    
+
+    print(f'Encryption key for {to_user} from {from_user} stored and sent successfully!')
 
 @socketio.on('chat_message')
 def handle_chat_message(data):
@@ -97,6 +137,11 @@ def handle_chat_message(data):
             'from_user': from_user,
             'to_user': to_user
         }, room=to_user_sid)
+        db = get_db_connection()
+        db.execute('INSERT INTO Message (messageID, SenderID, ReceiverID, encryptedMessage) VALUES (?, ?, ?, ?)',
+                   (str(uuid.uuid4()), from_user, to_user, message))
+        db.commit()
+        print(f'Message from {from_user} to {to_user} sent successfully!')
 
 @socketio.on('disconnect')
 def handle_disconnect():

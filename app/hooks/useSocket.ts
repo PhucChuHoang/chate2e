@@ -3,8 +3,9 @@ import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
 import { User } from "../types/type";
 //Use function from util
-import { makeNewKey, makeNewPrime, exponetional } from "../util/util_math";
+import { makeKeyArray, makeNewPrime, exponetional } from "../util/util_math";
 import { getEncryptData } from "../util/encrypt";
+import { getDecryptedData, getDecryptedMessage } from "../util/decrypt";
 
 const SERVER_URL = "http://localhost:8000";
 
@@ -38,11 +39,21 @@ export const useSocket = () => {
       });
 
       socketInstance.on("receive_message", (message) => {
-        addMessage(message);
+        if (secretKeyRef.current === BigInt(0)) {
+          addMessage(message);
+          return;
+        }
+        console.log("UI Receive: " + message.message);
+        let decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
+        let decryptMessageFormat = {
+          message: decryptMessage,
+          from_user: message.from_user,
+          to_user: message.to_user,
+        };
+        addMessage(decryptMessageFormat);
       });
 
       socketInstance.on("prime_number_message", (message) => {
-        //Log the message to the console
         let number = makeNewPrime(BigInt(message.prime_number));
 
         let encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
@@ -79,8 +90,15 @@ export const useSocket = () => {
   const sendMessage = (message: string, toUserId: string) => {
     let encryptMessage = "";
     if (secretKeyRef.current !== BigInt(0)) {
-      let keyArray = makeNewKey(secretKeyRef.current);
-      encryptMessage = getEncryptData(message, keyArray).join("");
+      let keyArray = makeKeyArray(secretKeyRef.current);
+      let tempValue = getEncryptData(message, keyArray);
+      console.log("UI Encrypt: ");
+      for (let i = 0; i < tempValue.length; i++) {
+        console.log(i + " string: " + tempValue[i]);
+      }
+      console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
+      encryptMessage = getEncryptData(message, keyArray).join('');
+      //console.log("Local encrypt: " + encryptMessage);
     }
     if (socket) {
       const newMessageLocal = {

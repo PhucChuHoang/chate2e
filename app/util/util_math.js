@@ -14,10 +14,8 @@ export function makeNewPrime(number) {
 
     return randomBigInt;
 }
-  
-export function makeNewKey(number) {
-    const random = require('crypto');
-  
+
+export function makeKeyArray(number) {
     const buffer = new ArrayBuffer(16);
     const view = new DataView(buffer);
     //Get the value from each byte of the key
@@ -28,6 +26,20 @@ export function makeNewKey(number) {
     }
     return new Uint8Array(buffer);
 }
+  
+// export function makeNewKey(number) {
+//     const random = require('crypto');
+  
+//     const buffer = new ArrayBuffer(16);
+//     const view = new DataView(buffer);
+//     //Get the value from each byte of the key
+    
+//     for (let i = 15; i >= 0; i--) {
+//       view.setUint8(i, Number(number & BigInt(0xff)));
+//       number >>= BigInt(8);
+//     }
+//     return new Uint8Array(buffer);
+// }
 
 export function exponetional(number, pow, mod) {
     let result = BigInt(1);
