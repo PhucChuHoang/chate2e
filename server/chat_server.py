@@ -42,7 +42,7 @@ def prime_number():
 def handle_connect():
     print('Client connected')
 
-@socketio.on('register_user')
+@socketio.on('authenticate')
 def handle_register_user(data):
     user_name = data.get('username')
     user_password = data.get('password')
@@ -73,6 +73,7 @@ def handle_register_user(data):
 
     # TESTDB: broadcast for ALL 
     emit('authenticate_result', {'result': 'success'}, room=session_id)
+    print(dbUsers)
     emit('users', [{'id': user['id'], 'name': user['user_name']} for user in dbUsers], broadcast=True)
     
     # TODO: uncomment to broadcast with all ONLINE users, not ALL users
