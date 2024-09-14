@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
-import { User } from "../types/type";
+import { Message, User } from "../types/type";
 //Use function from util
 import { makeKeyArray, makeNewPrime, exponetional } from "../util/util_math";
 import { getEncryptData } from "../util/encrypt";
@@ -10,7 +11,7 @@ import { getDecryptedData, getDecryptedMessage } from "../util/decrypt";
 const SERVER_URL = "http://localhost:8000";
 
 export const useSocket = () => {
-  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages } = useUser();
+  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, setMessages } = useUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -25,15 +26,27 @@ export const useSocket = () => {
       });
 
       socketInstance.on("connect", () => {
-        socketInstance.emit(
-            "authenticate", 
-            { 
-              username: userName, 
-              email: userEmail, 
-              password: userPassword, 
-              method: "register"
-            }
-          );
+        if (userName && userEmail && userPassword) {
+          socketInstance.emit(
+              "authenticate", 
+              { 
+                username: userName, 
+                email: userEmail, 
+                password: userPassword, 
+                method: "register"
+              }
+            );
+        }
+        else {
+          socketInstance.emit(
+              "authenticate", 
+              { 
+                username: userName, 
+                password: userPassword, 
+                method: "login"
+              }
+            );
+        }
       });
 
       socketInstance.on("authenticate_fail", () => {
@@ -43,11 +56,21 @@ export const useSocket = () => {
 
       socketInstance.on("users", (users: User[]) => {
         setUsers(users);
-        
+        let currentUserId = "";
         users.forEach((user) => {
           if (user.name === userName) {
             setUserId(user.id);
+            currentUserId = user.id;
           }
+        });
+
+        socketInstance.emit("get_old_messages", { user_id: currentUserId });
+      });
+
+      socketInstance.on("old_messages", (oldMessages) => {
+        setMessages({});
+        oldMessages.forEach((message: Message) => {
+          addMessage(message);
         });
       });
 
