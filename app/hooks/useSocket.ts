@@ -10,7 +10,7 @@ import { getDecryptedData, getDecryptedMessage } from "../util/decrypt";
 const SERVER_URL = "http://localhost:8000";
 
 export const useSocket = () => {
-  const { userName, addMessage, finished, userId, setUserId, messages } = useUser(); // Access userName and addMessage from context
+  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages } = useUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -19,13 +19,29 @@ export const useSocket = () => {
   const secretKeyRef = useRef<bigint>(BigInt(0));
 
   useEffect(() => {
-    if (userName && finished) {
+    if (finished) {
       const socketInstance = io(SERVER_URL, {
         transports: ["websocket"],
       });
 
       socketInstance.on("connect", () => {
-        socketInstance.emit("register_user", { name: userName });
+        if (userName && userEmail && userPassword) {
+          socketInstance.emit("register_user", { username: userName, email: userEmail, password: userPassword });
+        }
+        else {
+          socketInstance.emit("login_user", { username: userName, password: userPassword });
+        }
+      });
+
+      socketInstance.on("authenticate_result", (message) => {
+        const result = message.result;
+        if (result === "success") {
+          
+        }
+        else {
+          setFinished(false)
+          socketInstance.disconnect();
+        }
       });
 
       socketInstance.on("users", (users: User[]) => {
@@ -44,8 +60,8 @@ export const useSocket = () => {
           return;
         }
         console.log("UI Receive: " + message.message);
-        let decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
-        let decryptMessageFormat = {
+        const decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
+        const decryptMessageFormat = {
           message: decryptMessage,
           from_user: message.from_user,
           to_user: message.to_user,
@@ -54,9 +70,9 @@ export const useSocket = () => {
       });
 
       socketInstance.on("prime_number_message", (message) => {
-        let number = makeNewPrime(BigInt(message.prime_number));
+        const number = makeNewPrime(BigInt(message.prime_number));
 
-        let encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
+        const encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
 
         const newMessage = {
           message: encrypt.toString(),
@@ -74,7 +90,7 @@ export const useSocket = () => {
       socketInstance.on("receive_encrypt_key", (message) => {
         //console.log("Receive: " + message.message);
         //console.log("From: " + message.from_user);
-        let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
+        const secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
         //console.log("Secret Key: " + secretKey);
         secretKeyRef.current = BigInt(secretKey);
       });
@@ -85,13 +101,13 @@ export const useSocket = () => {
         socketInstance.disconnect();
       };
     }
-  }, [userName, finished]);
+  }, [userName, finished, setUserId, addMessage, userEmail, userPassword, setFinished]);
 
   const sendMessage = (message: string, toUserId: string) => {
     let encryptMessage = "";
     if (secretKeyRef.current !== BigInt(0)) {
-      let keyArray = makeKeyArray(secretKeyRef.current);
-      let tempValue = getEncryptData(message, keyArray);
+      const keyArray = makeKeyArray(secretKeyRef.current);
+      const tempValue = getEncryptData(message, keyArray);
       console.log("UI Encrypt: ");
       for (let i = 0; i < tempValue.length; i++) {
         console.log(i + " string: " + tempValue[i]);
