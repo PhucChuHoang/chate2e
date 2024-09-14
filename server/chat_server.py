@@ -69,11 +69,11 @@ def handle_register_user(data):
     users[user_id] = (user_name, session_id)
     chats[user_id] = {}
 
-    dbUsers = db.execute('SELECT id, name FROM User').fetchall()
+    dbUsers = db.execute('SELECT id, user_name FROM User').fetchall()
 
     # TESTDB: broadcast for ALL 
-    socketio.emit('authenticate_result', {'result': 'success'}, room=session_id)
-    emit('users', [{'id': user['id'], 'name': user['name']} for user in dbUsers], broadcast=True)
+    emit('authenticate_result', {'result': 'success'}, room=session_id)
+    emit('users', [{'id': user['id'], 'name': user['user_name']} for user in dbUsers], broadcast=True)
     
     # TODO: uncomment to broadcast with all ONLINE users, not ALL users
     # Send the updated list of users with their ids
