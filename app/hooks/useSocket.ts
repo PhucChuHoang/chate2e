@@ -26,22 +26,31 @@ export const useSocket = () => {
 
       socketInstance.on("connect", () => {
         if (userName && userEmail && userPassword) {
-          socketInstance.emit("register_user", { username: userName, email: userEmail, password: userPassword });
+          socketInstance.emit(
+            "authenticate", 
+            { 
+              username: userName, 
+              email: userEmail, 
+              password: userPassword, 
+              method: "register"
+            }
+          );
         }
         else {
-          socketInstance.emit("login_user", { username: userName, password: userPassword });
+          socketInstance.emit(
+            "authenticate", 
+            { 
+              username: userName, 
+              password: userPassword,
+              method: "login"
+            }
+          );
         }
       });
 
-      socketInstance.on("authenticate_result", (message) => {
-        const result = message.result;
-        if (result === "success") {
-          
-        }
-        else {
-          setFinished(false)
-          socketInstance.disconnect();
-        }
+      socketInstance.on("authenticate_fail", () => {
+        setFinished(false);
+        socketInstance.disconnect();
       });
 
       socketInstance.on("users", (users: User[]) => {
