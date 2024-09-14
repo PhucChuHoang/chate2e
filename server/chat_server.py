@@ -40,9 +40,10 @@ def prime_number():
 
 @socketio.on('connect')
 def handle_connect():
+    print()
     print('Client connected')
 
-@socketio.on('register_user')
+@socketio.on('authenticate')
 def handle_register_user(data):
     user_name = data.get('username')
     user_password = data.get('password')
@@ -57,7 +58,7 @@ def handle_register_user(data):
     if existing_user:
         user_id = existing_user['id']
         print(f'User {user_name} already exists with id {user_id}')
-        socketio.emit('authenticate_result', {'result': 'fail'}, room=session_id)
+        socketio.emit('authenticate_fail', room=session_id)
         return
     
     user_id = str(uuid.uuid4())  # Generate a unique user id
@@ -70,55 +71,11 @@ def handle_register_user(data):
     chats[user_id] = {}
 
     dbUsers = db.execute('SELECT id, user_name FROM User').fetchall()
-
+    
     # TESTDB: broadcast for ALL 
-    emit('authenticate_result', {'result': 'success'}, room=session_id)
-    emit('users', [{'id': user['id'], 'name': user['user_name']} for user in dbUsers], broadcast=True)
+    # emit('users', [{'id': user['id'], 'name': user['user_name']} for user in dbUsers], broadcast=True)
     
-    # TODO: uncomment to broadcast with all ONLINE users, not ALL users
-    # Send the updated list of users with their ids
-    #emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
-
-# @socketio.on('login_user')
-# def handle_login_user(data):
-#     user_name = data.get('username')
-#     user_password = data.get('password')
-#     session_id = request.sid
-
-#     db = get_db_connection()
-    
-#     # Check if the user already exists
-#     existing_user = db.execute('SELECT id FROM User WHERE user_name = ?', (user_name,)).fetchone()
-    
-#     if existing_user:
-#         user_id = existing_user['id']
-#         print(f'User {user_name} already exists with id {user_id}')
-#         socketio.emit('login_user_response', {'status': 'fail'}, room=session_id)
-#         return
-    
-#     user_id = str(uuid.uuid4())  # Generate a unique user id
-#     db.execute('INSERT INTO User (id, user_email, user_name, hashed_password) VALUES (?, ?, ?, ?)',
-#     (user_id, user_email, user_name, hash_password(user_password))) 
-#     db.commit()
-#     print(f'User {user_name} login with id {user_id} and session id {session_id}')
-    
-#     # Update the users dictionary
-#     users[user_id] = (user_name, session_id)
-#     # Initialize chat records for the user
-#     chats[user_id] = {}
-    
-#     # Fetch all users
-#     dbUsers = db.execute('SELECT id, name FROM User').fetchall()
-    
-#     # Send the updated list of users
-#     # TESTDB: broadcast for ALL USER
-#     emit('users', [{'id': user['id'], 'name': user['name']} for user in dbUsers], broadcast=True)
-    
-
-#     # TODO: uncomment to broadcast with all ONLINE users, not ALL users
-#     # Send the updated list of users with their ids
-#     #emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
-
+    emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
 @socketio.on('encrypt_key_message')
 def handle_encrypt_key_message(data):

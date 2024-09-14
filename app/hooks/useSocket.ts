@@ -25,8 +25,7 @@ export const useSocket = () => {
       });
 
       socketInstance.on("connect", () => {
-        if (userName && userEmail && userPassword) {
-          socketInstance.emit(
+        socketInstance.emit(
             "authenticate", 
             { 
               username: userName, 
@@ -35,17 +34,6 @@ export const useSocket = () => {
               method: "register"
             }
           );
-        }
-        else {
-          socketInstance.emit(
-            "authenticate", 
-            { 
-              username: userName, 
-              password: userPassword,
-              method: "login"
-            }
-          );
-        }
       });
 
       socketInstance.on("authenticate_fail", () => {
@@ -97,10 +85,7 @@ export const useSocket = () => {
       });
 
       socketInstance.on("receive_encrypt_key", (message) => {
-        //console.log("Receive: " + message.message);
-        //console.log("From: " + message.from_user);
         const secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
-        //console.log("Secret Key: " + secretKey);
         secretKeyRef.current = BigInt(secretKey);
       });
 
@@ -110,7 +95,7 @@ export const useSocket = () => {
         socketInstance.disconnect();
       };
     }
-  }, [userName, finished, setUserId, addMessage, userEmail, userPassword, setFinished]);
+  }, [finished]);
 
   const sendMessage = (message: string, toUserId: string) => {
     let encryptMessage = "";
