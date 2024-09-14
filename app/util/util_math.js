@@ -52,5 +52,12 @@ export function exponetional(number, pow, mod) {
         number = (number * number) % mod;
     }
     return result;
+}
 
+export function PIN_encrypt(plaintext, key) {
+    let ciphertext = "";
+    for (let i = 0; i < plaintext.length; i++) {
+        ciphertext += String.fromCharCode(plaintext.charCodeAt(i) ^ key[i % key.length]);
+    }
+    return ciphertext;
 }
