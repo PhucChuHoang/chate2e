@@ -248,10 +248,11 @@ function DoDecrypt(cipher, key) {
 }
 
 export function getDecryptedMessage(encryptedMessage, key) {
+    //console.log('Decrypt received: ' + encryptedMessage);
     const decryptedArray = [];
 
-    for (let i = 0; i < encryptedMessage.length; i += 64) {
-        const chunk = encryptedMessage.substring(i, i + 64);
+    for (let i = 0; i < encryptedMessage.length; i += 128) {
+        const chunk = encryptedMessage.substring(i, i + 128);
         decryptedArray.push(chunk);
     }
 
@@ -259,6 +260,10 @@ export function getDecryptedMessage(encryptedMessage, key) {
 }
 
 export function getDecryptedData(encryptedArray, key) {
+    console.log('Decrypt array received: ');
+    for (let i = 0; i < encryptedArray.length; i++) {
+        console.log(i + " string: " + encryptedArray[i]);
+    }
     // Variable to store the complete decrypted text
     let decryptedText = '';
 
@@ -271,6 +276,7 @@ export function getDecryptedData(encryptedArray, key) {
         decryptedText += decryptedChunk;
     }
 
+    console.log('Decrypted message: ' + decryptedText);
     return decryptedText;
 }
 

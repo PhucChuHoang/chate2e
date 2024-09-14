@@ -43,7 +43,7 @@ export const useSocket = () => {
           addMessage(message);
           return;
         }
-        //console.log("Receive: " + message.message);
+        console.log("UI Receive: " + message.message);
         let decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
         let decryptMessageFormat = {
           message: decryptMessage,
@@ -75,7 +75,7 @@ export const useSocket = () => {
         //console.log("Receive: " + message.message);
         //console.log("From: " + message.from_user);
         let secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
-        console.log("Secret Key: " + secretKey);
+        //console.log("Secret Key: " + secretKey);
         secretKeyRef.current = BigInt(secretKey);
       });
 
@@ -91,9 +91,14 @@ export const useSocket = () => {
     let encryptMessage = "";
     if (secretKeyRef.current !== BigInt(0)) {
       let keyArray = makeKeyArray(secretKeyRef.current);
-      //let tempValue = getEncryptData(message, keyArray);
-      //console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
+      let tempValue = getEncryptData(message, keyArray);
+      console.log("UI Encrypt: ");
+      for (let i = 0; i < tempValue.length; i++) {
+        console.log(i + " string: " + tempValue[i]);
+      }
+      console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
       encryptMessage = getEncryptData(message, keyArray).join('');
+      //console.log("Local encrypt: " + encryptMessage);
     }
     if (socket) {
       const newMessageLocal = {
