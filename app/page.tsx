@@ -10,7 +10,7 @@ import { User } from "./types/type";
 
 export default function Home() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword } = useUser();
+  const { userName, setUserName, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword } = useUser();
   const { users, messages, sendMessage } = useSocket();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(true);
   const [isClient, setIsClient] = useState(false);
@@ -21,14 +21,14 @@ export default function Home() {
     setIsClient(true);
   }, []);
 
-  useEffect(() => {
-    if (finished) {
-      setIsModalVisible(false);
-    }
-    else {
-      setIsModalVisible(true);
-    }
-  }, [finished]);
+  // useEffect(() => {
+  //   if (finished) {
+  //     setIsModalVisible(false);
+  //   }
+  //   else {
+  //     setIsModalVisible(true);
+  //   }
+  // }, [finished]);
 
   const handleOk = () => {
     if (isSignUp) {
@@ -36,7 +36,6 @@ export default function Home() {
       if (userName.trim() && userEmail.trim() && userPassword.trim()) {
         setIsModalVisible(false);
         setFinished(true);
-        antdMessage.success("Sign-up successful! You are now connected.");
       } else {
         antdMessage.error("Please fill in all the fields.");
       }
