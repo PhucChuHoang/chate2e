@@ -70,6 +70,7 @@ export const useSocket = () => {
       socketInstance.on("old_messages", (oldMessages) => {
         setMessages({});
         oldMessages.forEach((message: Message) => {
+          // message.message = getDecryptedMessage(message.message, key);
           addMessage(message);
         });
       });
