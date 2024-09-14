@@ -100,6 +100,57 @@ def handle_encrypt_key_message(data):
 
     print(f'Encryption key for {to_user} from {from_user} sent successfully!')
 
+@socketio.on('exchange_public_key')
+def exchange_public_key(data):
+    print(f'exchange_public_key: {data}')
+    to_user = data.get('to_user')
+    from_user = data.get('from_user')
+
+    # Fetch the session id for the recipient
+    to_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == to_user:
+            to_user_sid = sid
+            break
+    
+    from_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == from_user:
+            from_user_sid = sid
+    
+    db = get_db_connection()
+    message_key = db.execute('SELECT encrypted_secret_key FROM MessageKey WHERE sender_id = ? AND receiver_id = ?',
+                             (from_user, to_user)).fetchone()
+    if not message_key:
+        p = prime_number()
+        emit('prime_number_message', {
+                'prime_number': str(p),
+                'generator': 2,
+                'to_user': from_user,
+                'from_user': to_user,  
+            }, room = from_user_sid)
+        emit('prime_number_message', {
+            'prime_number': str(p),
+            'generator': 2,
+            'to_user': to_user,
+            'from_user': from_user,
+        }, room = to_user_sid)
+    else:       
+        print(f'loiiiiiiiiiiiiii key for {from_user} to {to_user} already exists!')
+        print(f"message", message_key['encrypted_secret_key'], "from_user", from_user,"to_user", to_user)
+        emit('send_encrypt_key', {
+            'message': message_key['encrypted_secret_key'],
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=from_user_sid)
+        emit('send_encrypt_key', {
+            'message': message_key['encrypted_secret_key'],
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=to_user_sid)
+                
+
+
 @socketio.on('chat_message')
 def handle_chat_message(data):
     print(f'handle_chat_message: {data}')
@@ -116,33 +167,7 @@ def handle_chat_message(data):
             to_user_sid = sid
             break
 
-    # Find the session id for the sender
-    from_user_sid = None
-    for uid, (name, sid) in users.items():
-        if uid == from_user:
-            from_user_sid = sid
-
     if to_user_sid:
-        # Check if the users have chat with each other -> Send prime
-        if from_user in chats:
-            p = prime_number()
-            if chats[from_user].get(to_user) != True:
-                chats[from_user][to_user] = True
-                chats[to_user][from_user] = True
-                emit('prime_number_message', {
-                    'prime_number': str(p),
-                    'generator': 2,
-                    'to_user': from_user,
-                    'from_user': to_user,  
-                }, room = from_user_sid)
-                emit('prime_number_message', {
-                    'prime_number': str(p),
-                    'generator': 2,
-                    'to_user': to_user,
-                    'from_user': from_user,
-                }, room = to_user_sid)
-        
-        #print(f'Sending message to user with id {to_user_sid}')
         emit('receive_message', {
             'message': message,
             'from_user': from_user,
@@ -179,28 +204,28 @@ def handle_submit_secret_key(data):
     db.commit()
     print(f'Secret key from {sender_id} to {receiver_id} stored successfully!')
 
-@socketio.on('retrieve_secret_key')
-def handle_retrieve_secret_key(data):
-    print(f'handle_retrieve_secret_key: {data}')
-    sender_id = data.get('sender_id')
-    receiver_id = data.get('receiver_id')
+# @socketio.on('retrieve_secret_key')
+# def handle_retrieve_secret_key(data):
+#     print(f'handle_retrieve_secret_key: {data}')
+#     sender_id = data.get('sender_id')
+#     receiver_id = data.get('receiver_id')
     
-    db = get_db_connection()
-    message_key = db.execute('SELECT encrypted_secret_key FROM MessageKey WHERE sender_id = ? AND receiver_id = ?',
-                             (sender_id, receiver_id)).fetchone()
-    if message_key:
-        for uid, (name, sid) in users.items():
-            if uid == sender_id:
-                to_user_sid = sid
-                emit('send_encrypt_key', {
-                'message': message_key,
-                'from_user': sender_id,
-                'to_user': receiver_id
-            }, room=to_user_sid)
-                print(f'Secret key from {sender_id} to {receiver_id} retrieved successfully!')
-                break
-    else:
-        print(f'No secret key found from {sender_id} to {receiver_id}')
+#     db = get_db_connection()
+#     message_key = db.execute('SELECT encrypted_secret_key FROM MessageKey WHERE sender_id = ? AND receiver_id = ?',
+#                              (sender_id, receiver_id)).fetchone()
+#     if message_key:
+#         for uid, (name, sid) in users.items():
+#             if uid == sender_id:
+#                 to_user_sid = sid
+#                 emit('send_encrypt_key', {
+#                 'message': message_key,
+#                 'from_user': sender_id,
+#                 'to_user': receiver_id
+#             }, room=to_user_sid)
+#                 print(f'Secret key from {sender_id} to {receiver_id} retrieved successfully!')
+#                 break
+#     else:
+#         print(f'No secret key found from {sender_id} to {receiver_id}')
 
 
 if __name__ == '__main__':

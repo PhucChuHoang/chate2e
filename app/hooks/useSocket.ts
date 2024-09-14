@@ -113,12 +113,12 @@ export const useSocket = () => {
   useEffect(() => {
     if (socketInstance.current) {
       console.log("Current chat user: " + selectedUser?.name);
+      socketInstance.current.emit("exchange_public_key", { from_user: userId, to_user: selectedUser?.id });
     }
   }, [selectedUser])
 
   const sendMessage = (message: string, toUserId: string) => {
     let encryptMessage = "";
-    if (secretKeyRef.current !== BigInt(0)) {
       const keyArray = makeKeyArray(secretKeyRef.current);
       const tempValue = getEncryptData(message, keyArray);
       console.log("UI Encrypt: ");
@@ -128,7 +128,6 @@ export const useSocket = () => {
       console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
       encryptMessage = getEncryptData(message, keyArray).join('');
       //console.log("Local encrypt: " + encryptMessage);
-    }
     if (socket) {
       const newMessageLocal = {
         message: message,
@@ -136,7 +135,7 @@ export const useSocket = () => {
         to_user: toUserId,
       };
       const newMessage = {
-        message: encryptMessage? encryptMessage : message,
+        message: encryptMessage,
         from_user: userId,
         to_user: toUserId,
       };
