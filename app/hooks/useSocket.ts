@@ -9,10 +9,9 @@ import { getEncryptData } from "../util/encrypt";
 import { getDecryptedData, getDecryptedMessage } from "../util/decrypt";
 
 const SERVER_URL = "http://localhost:8000";
-const USER_PIN = [1, 2, 3, 5, 6, 7];
 
 export const useSocket = () => {
-  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, selectedUser, setMessages } = useUser();
+  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, selectedUser, setMessages, userPin } = useUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -89,7 +88,7 @@ export const useSocket = () => {
       socketInstance.current?.on("send_encrypt_key", (message) => {
         let key = message.message;
         console.log("received key: " + key);
-        key = PIN_encrypt(key, USER_PIN);
+        key = PIN_encrypt(key, userPin);
         console.log("pin encrypt: " + key);
         secretKeyRef.current = BigInt(key);
         console.log("get old message from: " + message.from_user);
@@ -118,7 +117,7 @@ export const useSocket = () => {
         const secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
         secretKeyRef.current = BigInt(secretKey);
         console.log("Secret key: " + secretKey);
-        socketInstance.current?.emit("submit_secret_key", { encrypted_secret_key: PIN_encrypt(secretKey.toString(), USER_PIN), sender_id: message.to_user, receiver_id: message.from_user});
+        socketInstance.current?.emit("submit_secret_key", { encrypted_secret_key: PIN_encrypt(secretKey.toString(), userPin), sender_id: message.to_user, receiver_id: message.from_user});
       });
 
       setSocket(socketInstance.current);
@@ -146,7 +145,6 @@ export const useSocket = () => {
       }
       console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
       encryptMessage = getEncryptData(message, keyArray).join('');
-      //console.log("Local encrypt: " + encryptMessage);
     if (socket) {
       const newMessageLocal = {
         message: message,

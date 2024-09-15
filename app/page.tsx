@@ -8,7 +8,7 @@ import UserList from "./componets/UserList";
 import ChatWindow from "./componets/ChatWindow";
 
 export default function Home() {
-  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword, selectedUser, setSelectedUser } = useUser();
+  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword, selectedUser, setSelectedUser, userPin, setUserPin } = useUser();
   const { users, messages, sendMessage } = useSocket();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(true);
   const [isClient, setIsClient] = useState(false);
@@ -22,8 +22,7 @@ export default function Home() {
   useEffect(() => {
     if (finished) {
       setIsModalVisible(false);
-    }
-    else {
+    } else {
       setIsModalVisible(true);
     }
   }, [finished]);
@@ -31,7 +30,7 @@ export default function Home() {
   const handleOk = () => {
     if (isSignUp) {
       // Sign-Up logic
-      if (userName.trim() && userEmail.trim() && userPassword.trim()) {
+      if (userName.trim() && userEmail.trim() && userPassword.trim() && userPin.every(pin => pin !== undefined && pin !== null)) {
         setIsModalVisible(false);
         setFinished(true);
       } else {
@@ -42,17 +41,21 @@ export default function Home() {
       if (userName.trim() && userPassword.trim()) {
         setIsModalVisible(false);
         setFinished(true);
-        antdMessage.success("Login successful!");
       } else {
         antdMessage.error("Please enter valid credentials.");
       }
     }
   };
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (field === "name") setUserName(e.target.value);
-    if (field === "email") setUserEmail(e.target.value);
-    if (field === "password") setUserPassword(e.target.value);
+  const handleInputChange = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    // Allow empty string (for deleting) or a valid single digit (0-9)
+    if (value === '' || /^\d$/.test(value)) {
+      const newPin = [...userPin];
+      newPin[index] = value === '' ? undefined : Number(value);  // Update pin or clear
+      setUserPin(newPin);
+    }
   };
 
   // Return null while waiting for client-side render to avoid hydration errors
@@ -88,25 +91,42 @@ export default function Home() {
             <Input
               placeholder="Enter your username"
               value={userName}
-              onChange={handleInputChange("name")}
+              onChange={e => setUserName(e.target.value)}
             />
           </Form.Item>
           {isSignUp && (
-            <Form.Item label="Email">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                value={userEmail}
-                onChange={handleInputChange("email")}
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="Email">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={userEmail}
+                  onChange={e => setUserEmail(e.target.value)}
+                />
+              </Form.Item>
+            </>
           )}
           <Form.Item label="Password">
             <Input.Password
               placeholder="Enter your password"
               value={userPassword}
-              onChange={handleInputChange("password")}
+              onChange={e => setUserPassword(e.target.value)}
             />
+          </Form.Item>
+          <Form.Item label="PIN">
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Input
+                  key={index}
+                  type="text"
+                  maxLength={1}
+                  value={userPin[index] !== undefined ? String(userPin[index]) : ''}
+                  onChange={handleInputChange(index)}
+                  placeholder={`Digit ${index + 1}`}
+                  style={{ width: '40px', textAlign: 'center' }} // Center-align the input text
+                />
+              ))}
+            </div>
           </Form.Item>
         </Form>
       </Modal>

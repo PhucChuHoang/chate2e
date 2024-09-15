@@ -17,7 +17,9 @@ interface UserContextType {
   addMessage: (message: Message) => void;
   setMessages: (messages: Record<string, Message[]>) => void;
   selectedUser: User | null;
-  setSelectedUser: (user: User) => void; 
+  setSelectedUser: (user: User) => void;
+  userPin: (number | undefined)[];
+  setUserPin: (pin: (number | undefined)[]) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -30,6 +32,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userEmail, setUserEmail] = useState<string>("");
   const [userPassword, setUserPassword] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userPin, setUserPin] = useState<(number | undefined)[]>(Array(6).fill(undefined));
 
   return (
     <UserContext.Provider
@@ -58,6 +61,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setMessages,
         selectedUser,
         setSelectedUser,
+        userPin,
+        setUserPin
       }}
     >
       {children}
