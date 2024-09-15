@@ -69,7 +69,7 @@ export const useSocket = () => {
         socketInstance.current?.emit("get_old_messages", { user_id: currentUserId });
       });
 
-      socketInstance.on("old_messages", (oldMessages) => {
+      socketInstance.current?.on("old_messages", (oldMessages) => {
         setMessages({});
         oldMessages.forEach((message: Message) => {
           // message.message = getDecryptedMessage(message.message, key);
