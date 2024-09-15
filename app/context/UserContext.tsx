@@ -1,6 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import { Message } from "../types/type";
+import { Message, User } from "../types/type";
 
 interface UserContextType {
   userName: string;
@@ -16,6 +16,8 @@ interface UserContextType {
   messages: Record<string, Message[]>;
   addMessage: (message: Message) => void;
   setMessages: (messages: Record<string, Message[]>) => void;
+  selectedUser: User | null;
+  setSelectedUser: (user: User) => void; 
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -27,6 +29,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userId, setUserId] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string>("");
   const [userPassword, setUserPassword] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   return (
     <UserContext.Provider
@@ -53,6 +56,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         userPassword,
         setUserPassword,
         setMessages,
+        selectedUser,
+        setSelectedUser,
       }}
     >
       {children}

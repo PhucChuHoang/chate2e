@@ -4,14 +4,15 @@ import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
 import { Message, User } from "../types/type";
 //Use function from util
-import { makeKeyArray, makeNewPrime, exponetional } from "../util/util_math";
+import { makeKeyArray, makeNewPrime, exponetional, PIN_encrypt } from "../util/util_math";
 import { getEncryptData } from "../util/encrypt";
 import { getDecryptedData, getDecryptedMessage } from "../util/decrypt";
 
 const SERVER_URL = "http://localhost:8000";
+const USER_PIN = [1, 2, 3, 5, 6, 7];
 
 export const useSocket = () => {
-  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, setMessages } = useUser();
+  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, selectedUser, setMessages } = useUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -19,15 +20,16 @@ export const useSocket = () => {
   const serverPrimeNumberRef = useRef<bigint>(BigInt(0));
   const secretKeyRef = useRef<bigint>(BigInt(0));
 
+  const socketInstance = useRef<Socket | null>(null);
   useEffect(() => {
     if (finished) {
-      const socketInstance = io(SERVER_URL, {
+      socketInstance.current = io(SERVER_URL, {
         transports: ["websocket"],
       });
 
-      socketInstance.on("connect", () => {
+      socketInstance.current?.on("connect", () => {
         if (userName && userEmail && userPassword) {
-          socketInstance.emit(
+          socketInstance.current?.emit(
               "authenticate", 
               { 
                 username: userName, 
@@ -38,7 +40,7 @@ export const useSocket = () => {
             );
         }
         else {
-          socketInstance.emit(
+          socketInstance.current?.emit(
               "authenticate", 
               { 
                 username: userName, 
@@ -49,12 +51,12 @@ export const useSocket = () => {
         }
       });
 
-      socketInstance.on("authenticate_fail", () => {
+      socketInstance.current?.on("authenticate_fail", () => {
         setFinished(false);
-        socketInstance.disconnect();
+        socketInstance.current?.disconnect();
       });
 
-      socketInstance.on("users", (users: User[]) => {
+      socketInstance.current?.on("users", (users: User[]) => {
         setUsers(users);
         let currentUserId = "";
         users.forEach((user) => {
@@ -64,7 +66,7 @@ export const useSocket = () => {
           }
         });
 
-        socketInstance.emit("get_old_messages", { user_id: currentUserId });
+        socketInstance.current?.emit("get_old_messages", { user_id: currentUserId });
       });
 
       socketInstance.on("old_messages", (oldMessages) => {
@@ -75,11 +77,7 @@ export const useSocket = () => {
         });
       });
 
-      socketInstance.on("receive_message", (message) => {
-        if (secretKeyRef.current === BigInt(0)) {
-          addMessage(message);
-          return;
-        }
+      socketInstance.current?.on("receive_message", (message) => {
         console.log("UI Receive: " + message.message);
         const decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
         const decryptMessageFormat = {
@@ -90,7 +88,16 @@ export const useSocket = () => {
         addMessage(decryptMessageFormat);
       });
 
-      socketInstance.on("prime_number_message", (message) => {
+      //Receive old encrypted key from server
+      socketInstance.current?.on("send_encrypt_key", (message) => {
+        let key = message.message;
+        console.log("received key: " + key);
+        key = PIN_encrypt(key, USER_PIN);
+        console.log("pin encrypt: " + key);
+        secretKeyRef.current = BigInt(key);
+      });
+
+      socketInstance.current?.on("prime_number_message", (message) => {
         const number = makeNewPrime(BigInt(message.prime_number));
 
         const encrypt = exponetional(BigInt(message.generator), BigInt(number), BigInt(message.prime_number));
@@ -105,25 +112,33 @@ export const useSocket = () => {
         serverPrimeNumberRef.current = BigInt(message.prime_number);
 
         console.log("Send: " + newMessage.message);
-        socketInstance.emit("encrypt_key_message", newMessage);
+        socketInstance.current?.emit("encrypt_key_message", newMessage);
       });
 
-      socketInstance.on("receive_encrypt_key", (message) => {
+      socketInstance.current?.on("receive_encrypt_key", (message) => {
         const secretKey = exponetional(BigInt(message.message), BigInt(userPrimeNumberRef.current), BigInt(serverPrimeNumberRef.current));
         secretKeyRef.current = BigInt(secretKey);
+        console.log("Secret key: " + secretKey);
+        socketInstance.current?.emit("submit_secret_key", { encrypted_secret_key: PIN_encrypt(secretKey.toString(), USER_PIN), sender_id: message.to_user, receiver_id: message.from_user});
       });
 
-      setSocket(socketInstance);
+      setSocket(socketInstance.current);
 
       return () => {
-        socketInstance.disconnect();
+        socketInstance.current?.disconnect();
       };
     }
   }, [finished]);
 
+  useEffect(() => {
+    if (socketInstance.current) {
+      console.log("Current chat user: " + selectedUser?.name);
+      socketInstance.current.emit("exchange_public_key", { from_user: userId, to_user: selectedUser?.id });
+    }
+  }, [selectedUser])
+
   const sendMessage = (message: string, toUserId: string) => {
     let encryptMessage = "";
-    if (secretKeyRef.current !== BigInt(0)) {
       const keyArray = makeKeyArray(secretKeyRef.current);
       const tempValue = getEncryptData(message, keyArray);
       console.log("UI Encrypt: ");
@@ -133,7 +148,6 @@ export const useSocket = () => {
       console.log("Local decrypt: " + getDecryptedData(tempValue, keyArray));
       encryptMessage = getEncryptData(message, keyArray).join('');
       //console.log("Local encrypt: " + encryptMessage);
-    }
     if (socket) {
       const newMessageLocal = {
         message: message,
@@ -141,7 +155,7 @@ export const useSocket = () => {
         to_user: toUserId,
       };
       const newMessage = {
-        message: encryptMessage? encryptMessage : message,
+        message: encryptMessage,
         from_user: userId,
         to_user: toUserId,
       };

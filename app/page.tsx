@@ -6,11 +6,9 @@ import { useUser } from "./context/UserContext";
 import useSocket from "./hooks/useSocket";
 import UserList from "./componets/UserList";
 import ChatWindow from "./componets/ChatWindow";
-import { User } from "./types/type";
 
 export default function Home() {
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword } = useUser();
+  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword, selectedUser, setSelectedUser } = useUser();
   const { users, messages, sendMessage } = useSocket();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(true);
   const [isClient, setIsClient] = useState(false);

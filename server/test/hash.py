@@ -4,6 +4,7 @@ from flask_socketio import SocketIO, emit
 from Crypto.Util.number import getPrime
 import uuid
 import sqlite3
+
 def hash_password(password):
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)

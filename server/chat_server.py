@@ -94,7 +94,7 @@ def handle_register_user(data):
 
 @socketio.on('encrypt_key_message')
 def handle_encrypt_key_message(data):
-    print(f'Received encrypt_key_message: {data}')
+    print(f'handle_encrypt_key_message: {data}')
     to_user = data.get('to_user')
     from_user = data.get('from_user')
     encrypted_key = data.get('message')
@@ -113,7 +113,58 @@ def handle_encrypt_key_message(data):
             'to_user': to_user
         }, room=to_user_sid)
 
-    print(f'Encryption key for {to_user} from {from_user} stored and sent successfully!')
+    print(f'Encryption key for {to_user} from {from_user} sent successfully!')
+
+@socketio.on('exchange_public_key')
+def exchange_public_key(data):
+    print(f'exchange_public_key: {data}')
+    to_user = data.get('to_user')
+    from_user = data.get('from_user')
+
+    # Fetch the session id for the recipient
+    to_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == to_user:
+            to_user_sid = sid
+            break
+    
+    from_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == from_user:
+            from_user_sid = sid
+    
+    db = get_db_connection()
+    message_key = db.execute('SELECT encrypted_secret_key FROM MessageKey WHERE sender_id = ? AND receiver_id = ?',
+                             (from_user, to_user)).fetchone()
+    if not message_key:
+        p = prime_number()
+        emit('prime_number_message', {
+                'prime_number': str(p),
+                'generator': 2,
+                'to_user': from_user,
+                'from_user': to_user,  
+            }, room = from_user_sid)
+        emit('prime_number_message', {
+            'prime_number': str(p),
+            'generator': 2,
+            'to_user': to_user,
+            'from_user': from_user,
+        }, room = to_user_sid)
+    else:       
+        print(f'loiiiiiiiiiiiiii key for {from_user} to {to_user} already exists!')
+        print(f"message", message_key['encrypted_secret_key'], "from_user", from_user,"to_user", to_user)
+        emit('send_encrypt_key', {
+            'message': message_key['encrypted_secret_key'],
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=from_user_sid)
+        emit('send_encrypt_key', {
+            'message': message_key['encrypted_secret_key'],
+            'from_user': from_user,
+            'to_user': to_user
+        }, room=to_user_sid)
+                
+
 
 @socketio.on('get_old_messages')
 def handle_get_old_messages(data):
@@ -129,6 +180,7 @@ def handle_get_old_messages(data):
 
 @socketio.on('chat_message')
 def handle_chat_message(data):
+    print(f'handle_chat_message: {data}')
     #print(f'Received chat message: {data}')
     to_user = data.get('to_user')
     from_user = data.get('from_user')
@@ -142,12 +194,6 @@ def handle_chat_message(data):
             to_user_sid = sid
             break
 
-    # Find the session id for the sender
-    from_user_sid = None
-    for uid, (name, sid) in users.items():
-        if uid == from_user:
-            from_user_sid = sid
-    
     if to_user_sid:
         # Check if the users have chat with each other -> Send prime
         if from_user in chats:
@@ -190,6 +236,20 @@ def handle_disconnect():
         del users[disconnected_user_id]
         print(f'User with id {disconnected_user_id} disconnected')
         emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
+
+@socketio.on('submit_secret_key')
+def handle_submit_secret_key(data):
+    print(f'handle_submit_secret_key: {data}')
+    sender_id = data.get('sender_id')
+    receiver_id = data.get('receiver_id')
+    encrypted_secret_key = data.get('encrypted_secret_key')
+
+    db = get_db_connection()
+    db.execute('INSERT INTO MessageKey (sender_id, receiver_id, encrypted_secret_key) VALUES (?, ?, ?)',
+               (sender_id, receiver_id, encrypted_secret_key))
+    db.commit()
+    print(f'Secret key from {sender_id} to {receiver_id} stored successfully!')
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=8000)
