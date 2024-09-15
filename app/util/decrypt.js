@@ -260,10 +260,10 @@ export function getDecryptedMessage(encryptedMessage, key) {
 }
 
 export function getDecryptedData(encryptedArray, key) {
-    console.log('Decrypt array received: ');
-    for (let i = 0; i < encryptedArray.length; i++) {
-        console.log(i + " string: " + encryptedArray[i]);
-    }
+    //console.log('Decrypt array received: ');
+    // for (let i = 0; i < encryptedArray.length; i++) {
+    //     console.log(i + " string: " + encryptedArray[i]);
+    // }
     // Variable to store the complete decrypted text
     let decryptedText = '';
 
@@ -276,7 +276,7 @@ export function getDecryptedData(encryptedArray, key) {
         decryptedText += decryptedChunk;
     }
 
-    console.log('Decrypted message: ' + decryptedText);
+    //console.log('Decrypted message: ' + decryptedText);
     return decryptedText;
 }
 

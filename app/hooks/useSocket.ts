@@ -58,21 +58,18 @@ export const useSocket = () => {
 
       socketInstance.current?.on("users", (users: User[]) => {
         setUsers(users);
-        let currentUserId = "";
         users.forEach((user) => {
           if (user.name === userName) {
             setUserId(user.id);
-            currentUserId = user.id;
           }
         });
-
-        socketInstance.current?.emit("get_old_messages", { user_id: currentUserId });
       });
 
       socketInstance.current?.on("old_messages", (oldMessages) => {
         setMessages({});
+        console.log("Old messages: " + oldMessages);
         oldMessages.forEach((message: Message) => {
-          // message.message = getDecryptedMessage(message.message, key);
+          message.message = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
           addMessage(message);
         });
       });
@@ -95,6 +92,8 @@ export const useSocket = () => {
         key = PIN_encrypt(key, USER_PIN);
         console.log("pin encrypt: " + key);
         secretKeyRef.current = BigInt(key);
+        console.log("get old message from: " + message.from_user);
+        socketInstance.current?.emit("get_old_messages", { user_id: message.from_user});
       });
 
       socketInstance.current?.on("prime_number_message", (message) => {

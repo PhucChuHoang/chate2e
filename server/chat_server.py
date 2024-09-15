@@ -38,19 +38,6 @@ chats = {} # Format: {user_id: {user_id: true}}
 def prime_number():
     return getPrime(128) 
 
-def handle_login_user(userName, password):
-    db = get_db_connection()
-    # Check if the user already exists
-    userInfo = db.execute('SELECT id, hashed_password FROM User WHERE user_name = ?', (userName,)).fetchone()
-    if not userInfo:
-        print(f'User {userName} does not exist')
-        return False, None
-    if not check_password(password, userInfo['hashed_password']):
-        print(f'Invalid password for user {userName}')
-        return False, None
-    print(f'User {userName} logged in with ID {userInfo["id"]}')
-    return True, userInfo['id']
-
 @socketio.on('connect')
 def handle_connect():
     print()
@@ -151,8 +138,8 @@ def exchange_public_key(data):
             'from_user': from_user,
         }, room = to_user_sid)
     else:       
-        print(f'loiiiiiiiiiiiiii key for {from_user} to {to_user} already exists!')
-        print(f"message", message_key['encrypted_secret_key'], "from_user", from_user,"to_user", to_user)
+       # print(f'loiiiiiiiiiiiiii key for {from_user} to {to_user} already exists!')
+       # print(f"message", message_key['encrypted_secret_key'], "from_user", from_user,"to_user", to_user)
         emit('send_encrypt_key', {
             'message': message_key['encrypted_secret_key'],
             'from_user': from_user,
@@ -166,26 +153,12 @@ def exchange_public_key(data):
                 
 
 
-@socketio.on('get_old_messages')
-def handle_get_old_messages(data):
-    user_id = data.get('user_id')
-    session_id = request.sid
-    
-    db = get_db_connection()
-    messages = db.execute('SELECT encrypted_message, sender_id, receiver_id FROM Message WHERE sender_id = ? OR receiver_id = ?', (user_id, user_id)).fetchall()
-    
-    print(f'Sending old messages to user {user_id}')
-    
-    emit("old_messages", [{'message': message['encrypted_message'], 'from_user': message['sender_id'], 'to_user': message['receiver_id']} for message in messages], room=session_id)
-
 @socketio.on('chat_message')
 def handle_chat_message(data):
     print(f'handle_chat_message: {data}')
-    #print(f'Received chat message: {data}')
     to_user = data.get('to_user')
     from_user = data.get('from_user')
     message = data.get('message')
-    #print('List of users:', users)
     
     # Find the session id for the recipient
     to_user_sid = None
@@ -195,25 +168,6 @@ def handle_chat_message(data):
             break
 
     if to_user_sid:
-        # Check if the users have chat with each other -> Send prime
-        if from_user in chats:
-            p = prime_number()
-            if chats[from_user].get(to_user) != True:
-                chats[from_user][to_user] = True
-                chats[to_user][from_user] = True
-                emit('prime_number_message', {
-                    'prime_number': str(p),
-                    'generator': 2,
-                    'to_user': from_user,
-                    'from_user': to_user,  
-                }, room = from_user_sid)
-                emit('prime_number_message', {
-                    'prime_number': str(p),
-                    'generator': 2,
-                    'to_user': to_user,
-                    'from_user': from_user,
-                }, room = to_user_sid)
-        
         emit('receive_message', {
             'message': message,
             'from_user': from_user,
@@ -249,6 +203,40 @@ def handle_submit_secret_key(data):
                (sender_id, receiver_id, encrypted_secret_key))
     db.commit()
     print(f'Secret key from {sender_id} to {receiver_id} stored successfully!')
+
+
+def handle_login_user(userName, password):
+    db = get_db_connection()
+    # Check if the user already exists
+    userInfo = db.execute('SELECT id, hashed_password FROM User WHERE user_name = ?', (userName,)).fetchone()
+    if not userInfo:
+        print(f'User {userName} does not exist')
+        return False, None
+    if not check_password(password, userInfo['hashed_password']):
+        print(f'Invalid password for user {userName}')
+        return False, None
+    print(f'User {userName} logged in with ID {userInfo["id"]}')
+    return True, userInfo['id']
+
+@socketio.on('get_old_messages')
+def handle_get_old_messages(data):
+    print(f'handle_get_old_messages: {data}')
+    user_id = data.get('user_id')
+    session_id = request.sid
+
+    to_user_sid = None
+    for uid, (name, sid) in users.items():
+        if uid == user_id:
+            to_user_sid = sid
+            break
+    if session_id != to_user_sid:
+        return
+    db = get_db_connection()
+    messages = db.execute('SELECT encrypted_message, sender_id, receiver_id FROM Message WHERE sender_id = ? OR receiver_id = ?', (user_id, user_id)).fetchall()
+    
+    print(f'Sending old messages to user {user_id}')
+    # print(messages)
+    emit("old_messages", [{'message': message['encrypted_message'], 'from_user': message['sender_id'], 'to_user': message['receiver_id']} for message in messages], room=session_id)
 
 
 if __name__ == '__main__':
