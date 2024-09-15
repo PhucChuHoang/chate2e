@@ -38,6 +38,19 @@ chats = {} # Format: {user_id: {user_id: true}}
 def prime_number():
     return getPrime(128) 
 
+def handle_login_user(userName, password):
+    db = get_db_connection()
+    # Check if the user already exists
+    userInfo = db.execute('SELECT id, hashed_password FROM User WHERE user_name = ?', (userName,)).fetchone()
+    if not userInfo:
+        print(f'User {userName} does not exist')
+        return False, None
+    if not check_password(password, userInfo['hashed_password']):
+        print(f'Invalid password for user {userName}')
+        return False, None
+    print(f'User {userName} logged in with ID {userInfo["id"]}')
+    return True, userInfo['id']
+
 @socketio.on('connect')
 def handle_connect():
     print()
@@ -48,34 +61,36 @@ def handle_register_user(data):
     user_name = data.get('username')
     user_password = data.get('password')
     user_email = data.get('email')
+    method = data.get('method')
     session_id = request.sid
-
-    db = get_db_connection()
     
-    # Check if the user already exists
-    existing_user = db.execute('SELECT id FROM User WHERE user_name = ?', (user_name,)).fetchone()
-    
-    if existing_user:
-        user_id = existing_user['id']
-        print(f'User {user_name} already exists with id {user_id}')
-        socketio.emit('authenticate_fail', room=session_id)
-        return
-    
-    user_id = str(uuid.uuid4())  # Generate a unique user id
-    db.execute('INSERT INTO User (id, user_email, user_name, hashed_password) VALUES (?, ?, ?, ?)',
-    (user_id, user_email, user_name, hash_password(user_password))) 
-    db.commit()
-    print(f'User {user_name} registered with id {user_id} and session id {session_id}')
-    
-    users[user_id] = (user_name, session_id)
-    chats[user_id] = {}
-
-    dbUsers = db.execute('SELECT id, user_name FROM User').fetchall()
-    
-    # TESTDB: broadcast for ALL 
-    # emit('users', [{'id': user['id'], 'name': user['user_name']} for user in dbUsers], broadcast=True)
-    
-    emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
+    if method == 'login':
+        status, user_id = handle_login_user(user_name, user_password)
+        if status:
+            users[user_id] = (user_name, session_id)
+            chats[user_id] = {}
+            emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
+    else:
+        db = get_db_connection()
+        # Check if the user already exists
+        existing_user = db.execute('SELECT id FROM User WHERE user_name = ?', (user_name,)).fetchone()
+        
+        if existing_user:
+            user_id = existing_user['id']
+            print(f'User {user_name} already exists with id {user_id}')
+            socketio.emit('authenticate_fail', room=session_id)
+            return
+        
+        user_id = str(uuid.uuid4())  # Generate a unique user id
+        db.execute('INSERT INTO User (id, user_email, user_name, hashed_password) VALUES (?, ?, ?, ?)',
+        (user_id, user_email, user_name, hash_password(user_password))) 
+        db.commit()
+        print(f'User {user_name} registered with id {user_id} and session id {session_id}')
+        
+        users[user_id] = (user_name, session_id)
+        chats[user_id] = {}
+        
+        emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
 
 @socketio.on('encrypt_key_message')
 def handle_encrypt_key_message(data):
@@ -151,6 +166,18 @@ def exchange_public_key(data):
                 
 
 
+@socketio.on('get_old_messages')
+def handle_get_old_messages(data):
+    user_id = data.get('user_id')
+    session_id = request.sid
+    
+    db = get_db_connection()
+    messages = db.execute('SELECT encrypted_message, sender_id, receiver_id FROM Message WHERE sender_id = ? OR receiver_id = ?', (user_id, user_id)).fetchall()
+    
+    print(f'Sending old messages to user {user_id}')
+    
+    emit("old_messages", [{'message': message['encrypted_message'], 'from_user': message['sender_id'], 'to_user': message['receiver_id']} for message in messages], room=session_id)
+
 @socketio.on('chat_message')
 def handle_chat_message(data):
     print(f'handle_chat_message: {data}')
@@ -168,15 +195,34 @@ def handle_chat_message(data):
             break
 
     if to_user_sid:
+        # Check if the users have chat with each other -> Send prime
+        if from_user in chats:
+            p = prime_number()
+            if chats[from_user].get(to_user) != True:
+                chats[from_user][to_user] = True
+                chats[to_user][from_user] = True
+                emit('prime_number_message', {
+                    'prime_number': str(p),
+                    'generator': 2,
+                    'to_user': from_user,
+                    'from_user': to_user,  
+                }, room = from_user_sid)
+                emit('prime_number_message', {
+                    'prime_number': str(p),
+                    'generator': 2,
+                    'to_user': to_user,
+                    'from_user': from_user,
+                }, room = to_user_sid)
+        
         emit('receive_message', {
             'message': message,
             'from_user': from_user,
             'to_user': to_user
         }, room=to_user_sid)
-        # db = get_db_connection()
-        # db.execute('INSERT INTO Message (messageid, Senderid, Receiverid, encryptedMessage) VALUES (?, ?, ?, ?)',
-        #            (str(uuid.uuid4()), from_user, to_user, message))
-        # db.commit()
+        db = get_db_connection()
+        db.execute('INSERT INTO Message (message_id, sender_id, receiver_id, encrypted_message) VALUES (?, ?, ?, ?)',
+                   (str(uuid.uuid4()), from_user, to_user, message))
+        db.commit()
         print(f'Message from {from_user} to {to_user} sent successfully!')
 
 @socketio.on('disconnect')
@@ -203,29 +249,6 @@ def handle_submit_secret_key(data):
                (sender_id, receiver_id, encrypted_secret_key))
     db.commit()
     print(f'Secret key from {sender_id} to {receiver_id} stored successfully!')
-
-# @socketio.on('retrieve_secret_key')
-# def handle_retrieve_secret_key(data):
-#     print(f'handle_retrieve_secret_key: {data}')
-#     sender_id = data.get('sender_id')
-#     receiver_id = data.get('receiver_id')
-    
-#     db = get_db_connection()
-#     message_key = db.execute('SELECT encrypted_secret_key FROM MessageKey WHERE sender_id = ? AND receiver_id = ?',
-#                              (sender_id, receiver_id)).fetchone()
-#     if message_key:
-#         for uid, (name, sid) in users.items():
-#             if uid == sender_id:
-#                 to_user_sid = sid
-#                 emit('send_encrypt_key', {
-#                 'message': message_key,
-#                 'from_user': sender_id,
-#                 'to_user': receiver_id
-#             }, room=to_user_sid)
-#                 print(f'Secret key from {sender_id} to {receiver_id} retrieved successfully!')
-#                 break
-#     else:
-#         print(f'No secret key found from {sender_id} to {receiver_id}')
 
 
 if __name__ == '__main__':

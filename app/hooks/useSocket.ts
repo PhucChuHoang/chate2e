@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import { useUser } from "../context/UserContext";
-import { User } from "../types/type";
+import { Message, User } from "../types/type";
 //Use function from util
 import { makeKeyArray, makeNewPrime, exponetional, PIN_encrypt } from "../util/util_math";
 import { getEncryptData } from "../util/encrypt";
@@ -11,7 +12,7 @@ const SERVER_URL = "http://localhost:8000";
 const USER_PIN = [1, 2, 3, 5, 6, 7];
 
 export const useSocket = () => {
-  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, selectedUser } = useUser();
+  const { userName, userEmail, userPassword, addMessage, finished, setFinished, userId, setUserId, messages, selectedUser, setMessages } = useUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
@@ -26,16 +27,28 @@ export const useSocket = () => {
         transports: ["websocket"],
       });
 
-      socketInstance.current.on("connect", () => {
-        socketInstance.current?.emit(
-            "authenticate", 
-            { 
-              username: userName, 
-              email: userEmail, 
-              password: userPassword, 
-              method: "register"
-            }
-          );
+      socketInstance.current?.on("connect", () => {
+        if (userName && userEmail && userPassword) {
+          socketInstance.current?.emit(
+              "authenticate", 
+              { 
+                username: userName, 
+                email: userEmail, 
+                password: userPassword, 
+                method: "register"
+              }
+            );
+        }
+        else {
+          socketInstance.current?.emit(
+              "authenticate", 
+              { 
+                username: userName, 
+                password: userPassword, 
+                method: "login"
+              }
+            );
+        }
       });
 
       socketInstance.current?.on("authenticate_fail", () => {
@@ -45,19 +58,26 @@ export const useSocket = () => {
 
       socketInstance.current?.on("users", (users: User[]) => {
         setUsers(users);
-        
+        let currentUserId = "";
         users.forEach((user) => {
           if (user.name === userName) {
             setUserId(user.id);
+            currentUserId = user.id;
           }
+        });
+
+        socketInstance.current?.emit("get_old_messages", { user_id: currentUserId });
+      });
+
+      socketInstance.on("old_messages", (oldMessages) => {
+        setMessages({});
+        oldMessages.forEach((message: Message) => {
+          // message.message = getDecryptedMessage(message.message, key);
+          addMessage(message);
         });
       });
 
       socketInstance.current?.on("receive_message", (message) => {
-        // if (secretKeyRef.current === BigInt(0)) {
-        //   addMessage(message);
-        //   return;
-        // }
         console.log("UI Receive: " + message.message);
         const decryptMessage = getDecryptedMessage(message.message, makeKeyArray(secretKeyRef.current));
         const decryptMessageFormat = {

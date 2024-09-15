@@ -8,7 +8,7 @@ import UserList from "./componets/UserList";
 import ChatWindow from "./componets/ChatWindow";
 
 export default function Home() {
-  const { userName, setUserName, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword, selectedUser, setSelectedUser } = useUser();
+  const { userName, setUserName, finished, setFinished, userId, userEmail, setUserEmail, userPassword, setUserPassword, selectedUser, setSelectedUser } = useUser();
   const { users, messages, sendMessage } = useSocket();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(true);
   const [isClient, setIsClient] = useState(false);
@@ -19,14 +19,14 @@ export default function Home() {
     setIsClient(true);
   }, []);
 
-  // useEffect(() => {
-  //   if (finished) {
-  //     setIsModalVisible(false);
-  //   }
-  //   else {
-  //     setIsModalVisible(true);
-  //   }
-  // }, [finished]);
+  useEffect(() => {
+    if (finished) {
+      setIsModalVisible(false);
+    }
+    else {
+      setIsModalVisible(true);
+    }
+  }, [finished]);
 
   const handleOk = () => {
     if (isSignUp) {

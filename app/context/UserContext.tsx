@@ -15,6 +15,7 @@ interface UserContextType {
   setFinished: (finished: boolean) => void;
   messages: Record<string, Message[]>;
   addMessage: (message: Message) => void;
+  setMessages: (messages: Record<string, Message[]>) => void;
   selectedUser: User | null;
   setSelectedUser: (user: User) => void; 
 }
@@ -54,6 +55,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUserEmail,
         userPassword,
         setUserPassword,
+        setMessages,
         selectedUser,
         setSelectedUser,
       }}
