@@ -57,6 +57,8 @@ def handle_register_user(data):
             users[user_id] = (user_name, session_id)
             chats[user_id] = {}
             emit('users', [{'id': uid, 'name': name} for uid, (name, _) in users.items()], broadcast=True)
+        else:
+            socketio.emit('authenticate_fail', room=session_id)
     else:
         db = get_db_connection()
         # Check if the user already exists
